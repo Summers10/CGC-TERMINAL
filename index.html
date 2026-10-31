@@ -35,6 +35,7 @@
   .kpi .v{font-size:22px;margin:4px 0 2px}
   .kpi .r{display:flex;justify-content:space-between;font-size:12px;color:var(--dim)}
   .up{color:var(--up)} .dn{color:var(--dn)}
+  .stack{margin-bottom:10px}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   @media(max-width:900px){.grid{grid-template-columns:1fr}}
   .panel{background:var(--panel);border:1px solid var(--line);padding:10px 12px;min-width:0}
@@ -189,12 +190,14 @@ function renderGrain(g){
   const mName = m.k==='dom'?g.dom:m.n;
   document.getElementById('app').innerHTML = `
   <div class="kpis">${kpis}</div>
+  <div class="stack">
+    <div class="panel scroll"><h3><span>LAST 10 WEEKS (kt)</span></h3>${recentTable(g)}</div>
+  </div>
   <div class="grid">
     <div class="panel"><h3><span>${mName} · ${m.flow?'CUMULATIVE CYTD':'WEEK-END LEVEL'} (kt) ${g.sub?'· '+g.sub:''}${m.proj?' · dotted = seasonal pace':''}</span><span class="seg"><button id="zb" class="${state.zoom?'on':''}">ZOOM</button><button id="fb" class="${state.zoom?'':'on'}">FULL YR</button></span></h3><div class="chart"><canvas id="c1"></canvas></div></div>
     <div class="panel"><h3><span>${m.flow?mName+' · WEEKLY (kt)':'STOCKS BY LOCATION (kt)'}</span></h3><div class="chart"><canvas id="c2"></canvas></div></div>
     <div class="panel scroll"><h3><span>EXPORTS BY PORT · TERMINAL (kt)</span></h3>${portTable(g.k)}</div>
     <div class="panel scroll"><h3><span>PRIMARY DELIVERIES BY PROVINCE · CYTD (kt)</span></h3>${provTable(g.k)}</div>
-    <div class="panel scroll" style="grid-column:1/-1"><h3><span>LAST 10 WEEKS (kt)</span></h3>${recentTable(g)}</div>
   </div>${notes()}`;
 
   document.querySelectorAll('.kpi').forEach(el=>el.onclick=()=>{state.metric=el.dataset.m; render();});
