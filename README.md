@@ -1,24 +1,22 @@
-# CGC Terminal — Canola & Wheat
+CGC Terminal — build notes (updated 2026-10-31)
 
-Weekly tracker built on the Canadian Grain Commission **Grain Statistics Weekly** (GSW) CSVs.
-Static GitHub Pages site + GitHub Actions cron (canada.ca blocks browser CORS, so data is fetched server-side and committed).
+Repo: github.com/Summers10/CGC · Site: https://summers10.github.io/CGC/ Static GitHub Pages site + GitHub Actions cron (Thu 22:30 UTC, Fri 14:30 UTC) → scripts/fetch_cgc.py → data/cgc.json → index.html (Chart.js). Scope: Canola and Wheat (ex-durum) tabs only. No Summary/Durum/All Wheat tabs (user's request).
 
-## Tracks (Canola · Wheat ex-durum · Durum · All Wheat)
-- Producer deliveries (weekly, CYTD, by province)
-- Domestic use (process elevator milled/mfg grain — canola crush)
-- Exports (terminal by port + direct from primaries)
-- Commercial stocks (primary / process / terminal)
-- Current vs last year vs prior 5-yr avg + min/max band, aligned by grain week
+Fetching (important)
+canada.ca (Akamai) resets plain curl/python HTTP/2 requests from GitHub runners (curl err 92 INTERNAL_ERROR).
+Working fix: curl_cffi with impersonate="chrome" (workflow step pip install curl_cffi). Script falls back to curl http1.1 / plain curl.
+If ever blocked again: fallback plan = self-hosted GitHub runner on home PC.
+Source
+Page: https://www.canada.ca/en/grain-commission/services/statistics/grain-statistics-weekly.html
+CSV: .../content/dam/cgc-ccg/documents/statistiques-statistics/grain-statistics-weekly/{CY}/grain-stats-weekly-{CY}.csv (2025-26+), grain-statistics-weekly-{CY}.csv (≤2024-25)
+Columns: crop year, grain week, week ending date (dd/mm/yyyy), worksheet, metric, period (Current Week / Crop Year), grain, grade, region, ktonnes. Pre-2024 files put grain_week first → parse by header name.
+Metric mapping — matches the office's GSW Excel "Summary" tab
+Deliveries = Primary/Deliveries + Process/Producer Deliveries + Producer Cars/Shipments
+Domestic disappearance = Process/Milled/Mfg Grain + Terminal Disposition/Canadian Domestic + Primary Shipment Distribution(Shipment Distribution)/Canadian Domestic + Producer Cars/Shipment Destinations "Canada Processors"
+Crush (canola) / Milled (wheat) = Process/Milled/Mfg Grain (shown separately)
+Exports = Terminal Exports + Primary Shipment Distribution/Export Destinations + Producer Cars/Shipment Destinations "United States*"
+Stocks = Summary/Stocks (excl. condo storage)
+Quirks avoided: Process/Provincial Deliveries and Ab/Mb/Sk-Shipment Distribution mix CY values under "Current Week".
+Verified vs Excel Summary tab, wk 12 (ending 25/10/2026), kt
 
-## Setup
-1. Create a new GitHub repo, push these files.
-2. Settings → Pages → Deploy from branch → `main` / root.
-3. Actions tab → **Update CGC data** → *Run workflow* (first run builds `data/cgc.json`).
-4. After that it runs Thursday 22:30 UTC and Friday 14:30 UTC.
-
-## Files
-- `scripts/fetch_cgc.py` — downloads current + 5 prior crop-year CSVs, builds `data/cgc.json` (stdlib only)
-- `.github/workflows/update.yml` — cron + commit
-- `index.html` — the terminal (Chart.js)
-
-Local test: `python scripts/fetch_cgc.py && python -m http.server` → http://localhost:8000
+Canola: deliveries 445.9 / 5,430.1 · terminal receipts 316.2 / 2,325.0 · exports 238.0 / 1,886.1 · dom. disappearance 196.3 / 2,989.2 · stocks 1,561.7 Wheat: deliveries 426.8 / 6,301.2 (calc 6,301.1 rounding) · receipts 439.6 / 7,187.1 · exports 432.5 / 6,005.3 · dom. disapp. 104.5 / 1,553.4 (calc 1,553.5) · stocks 2,682.6 Year-ago CYTD (from 2025-26 file wk 12) also matched: canola del 4,112.8 / exp 1,234.8 / dom 2,732.5; wheat del 6,181.6 / exp 5,121.0 / dom 1,077.3
