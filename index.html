@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CGC Terminal · Canola & Wheat</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0b0d10; --panel:#12161b; --line:#232a33; --txt:#d7dde4; --dim:#7d8894;
+    --amber:#f5a524; --cur:#f5a524; --ly:#4ea1ff; --avg:#9aa5b1; --up:#2fbf71; --dn:#ef4b4b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  header{display:flex;flex-wrap:wrap;gap:12px;align-items:baseline;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line)}
+  h1{margin:0;font-size:16px;letter-spacing:.08em;color:var(--amber)}
+  .meta{color:var(--dim);font-size:12px}
+  nav{display:flex;flex-wrap:wrap;gap:4px;padding:8px 16px;border-bottom:1px solid var(--line)}
+  nav button,.seg button{background:transparent;color:var(--dim);border:1px solid var(--line);padding:5px 12px;font:inherit;cursor:pointer;letter-spacing:.05em}
+  nav button.on,.seg button.on{color:#000;background:var(--amber);border-color:var(--amber)}
+  main{padding:14px 16px;max-width:1500px;margin:0 auto}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-bottom:14px}
+  .kpi{background:var(--panel);border:1px solid var(--line);padding:10px 12px;cursor:pointer}
+  .kpi.on{border-color:var(--amber)}
+  .kpi .t{color:var(--dim);font-size:11px;letter-spacing:.08em}
+  .kpi .v{font-size:22px;margin:4px 0 2px}
+  .kpi .r{display:flex;justify-content:space-between;font-size:12px;color:var(--dim)}
+  .up{color:var(--up)} .dn{color:var(--dn)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);padding:10px 12px;min-width:0}
+  .panel h3{margin:0 0 8px;font-size:11px;letter-spacing:.1em;color:var(--dim);font-weight:normal;display:flex;justify-content:space-between;gap:8px}
+  .chart{position:relative;height:300px}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th,td{padding:4px 6px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  th{color:var(--dim);font-weight:normal}
+  tr.tot td{color:var(--amber)}
+  .seg{display:inline-flex;gap:2px}
+  .seg button{padding:2px 8px;font-size:11px}
+  .note{color:var(--dim);font-size:11px;margin-top:12px;line-height:1.6}
+  .scroll{overflow-x:auto}
+  a{color:var(--ly)}
+</style>
+</head>
+<body>
+<header>
+  <h1>CGC TERMINAL</h1>
+  <div class="meta" id="meta">loading…</div>
+</header>
+<nav id="tabs"></nav>
+<main id="app"></main>
+
+<script>
+const GRAINS = [
+  {k:'canola',   n:'CANOLA',    dom:'CRUSH'},
+  {k:'wheat',    n:'WHEAT',     dom:'DOMESTIC PROCESSING', sub:'ex-durum'},
+  {k:'durum',    n:'DURUM',     dom:'DOMESTIC PROCESSING'},
+  {k:'allwheat', n:'ALL WHEAT', dom:'DOMESTIC PROCESSING', sub:'wheat + durum'},
+];
+const METRICS = [
+  {k:'del', n:'PRODUCER DELIVERIES', flow:true},
+  {k:'dom', n:'DOMESTIC USE',        flow:true},
+  {k:'exp', n:'EXPORTS',             flow:true},
+  {k:'stk', n:'COMMERCIAL STOCKS',   flow:false},
+];
+let D, state = {tab:'summary', metric:'del', zoom:true}, charts = [];
+
+const fmt = (v,d=1) => v==null||isNaN(v) ? '–' : v.toLocaleString('en-CA',{minimumFractionDigits:d,maximumFractionDigits:d});
+const pct = (a,b) => (a==null||b==null||!b) ? null : (a/b-1)*100;
+const pctHtml = p => p==null ? '<span>–</span>' : `<span class="${p>=0?'up':'dn'}">${p>=0?'+':''}${p.toFixed(1)}%</span>`;
+const at = (arr,w) => arr && arr[w-1]!=null ? arr[w-1] : null;
+const mean = xs => { xs = xs.filter(x=>x!=null); return xs.length ? xs.reduce((a,b)=>a+b,0)/xs.length : null; };
+const label = cy => cy.slice(2,4)+'/'+cy.slice(7,9);
+
+function series(g, cy, key){ return (D.grains[g][cy]||{})[key]; }
+function hist(){ return D.years.slice(1); }          // prior crop years (up to 5)
+function ly(){ return D.years[1]; }
+
+// value for metric m at week w: cumulative (cy) or weekly (wk); stocks = level
+function val(g, cy, m, w, mode){
+  if (m==='stk') return at(series(g,cy,'stk'), w);
+  return at(series(g,cy, m+'_'+(mode||'cy')), w);
+}
+function avg5(g, m, w, mode){ return mean(hist().map(cy => val(g,cy,m,w,mode))); }
+
+function boot(){
+  fetch('data/cgc.json?'+Date.now()).then(r=>r.json()).then(j=>{
+    D=j;
+    const dt = D.latest_date ? new Date(D.latest_date+'T12:00:00').toLocaleDateString('en-CA',{month:'short',day:'numeric',year:'numeric'}) : '';
+    document.getElementById('meta').innerHTML =
+      `CY ${D.current} · WEEK ${D.latest_week} · ending ${dt} · updated ${D.updated.replace('T',' ').slice(0,16)} UTC · <a href="${D.source_url}" target="_blank">CGC GSW</a>`;
+    renderTabs(); render();
+  }).catch(e=>{ document.getElementById('app').innerHTML = '<p>Could not load data/cgc.json — run the GitHub Action once.</p>'; console.error(e); });
+}
+
+function renderTabs(){
+  const t = [{k:'summary',n:'SUMMARY'}, ...GRAINS];
+  document.getElementById('tabs').innerHTML = t.map(x=>`<button data-k="${x.k}" class="${state.tab===x.k?'on':''}">${x.n}</button>`).join('');
+  document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{state.tab=b.dataset.k; renderTabs(); render();});
+}
+
+function render(){
+  charts.forEach(c=>c.destroy()); charts=[];
+  state.tab==='summary' ? renderSummary() : renderGrain(GRAINS.find(g=>g.k===state.tab));
+}
+
+/* ---------- SUMMARY ---------- */
+function renderSummary(){
+  const w = D.latest_week;
+  let rows = '';
+  for (const g of GRAINS){
+    METRICS.forEach((m,i)=>{
+      const mode = m.flow ? 'cy' : null;
+      const cur = val(g.k,D.current,m.k,w,mode), l = val(g.k,ly(),m.k,w,mode), a = avg5(g.k,m.k,w,mode);
+      const wk = m.flow ? val(g.k,D.current,m.k,w,'wk') : null;
+      const wkl = m.flow ? val(g.k,ly(),m.k,w,'wk') : null;
+      rows += `<tr${i===0?' style="border-top:2px solid var(--line)"':''}>
+        <td>${i===0?`<b style="color:var(--amber)">${g.n}</b>`:''}</td><td style="text-align:left">${m.k==='dom'?g.dom:m.n}</td>
+        <td>${m.flow?fmt(wk):'–'}</td><td>${m.flow?fmt(wkl):'–'}</td>
+        <td>${fmt(cur)}</td><td>${fmt(l)}</td><td>${pctHtml(pct(cur,l))}</td><td>${fmt(a)}</td><td>${pctHtml(pct(cur,a))}</td></tr>`;
+    });
+  }
+  document.getElementById('app').innerHTML = `
+  <div class="panel scroll"><h3><span>WEEK ${w} SNAPSHOT · KT</span><span>flows: CYTD · stocks: level at week end</span></h3>
+  <table><thead><tr><th>GRAIN</th><th style="text-align:left">METRIC</th><th>WEEK</th><th>WEEK LY</th><th>CYTD / LEVEL</th><th>LY</th><th>vs LY</th><th>${hist().length}-YR AVG</th><th>vs AVG</th></tr></thead>
+  <tbody>${rows}</tbody></table></div>
+  <div class="grid" style="margin-top:10px">
+    <div class="panel"><h3>CANOLA · CYTD EXPORTS vs CRUSH</h3><div class="chart"><canvas id="s1"></canvas></div></div>
+    <div class="panel"><h3>ALL WHEAT · CYTD EXPORTS vs LY / AVG</h3><div class="chart"><canvas id="s2"></canvas></div></div>
+  </div>${notes()}`;
+  const n = D.dates[D.current].length, wks = maxWeeks();
+  charts.push(lineChart('s1', wks, [
+    ds('Exports '+label(D.current), series('canola',D.current,'exp_cy'), 'var(--cur)'),
+    ds('Exports '+label(ly()), series('canola',ly(),'exp_cy'), 'var(--ly)', [4,3]),
+    ds('Crush '+label(D.current), series('canola',D.current,'dom_cy'), '#2fbf71'),
+    ds('Crush '+label(ly()), series('canola',ly(),'dom_cy'), '#2fbf71', [4,3]),
+  ]));
+  charts.push(lineChart('s2', wks, [
+    ds(label(D.current), series('allwheat',D.current,'exp_cy'), 'var(--cur)'),
+    ds(label(ly()), series('allwheat',ly(),'exp_cy'), 'var(--ly)', [4,3]),
+    ds(hist().length+'-yr avg', avgSeries('allwheat','exp','cy'), 'var(--avg)', [2,2]),
+  ]));
+}
+
+/* ---------- GRAIN VIEW ---------- */
+function renderGrain(g){
+  const w = D.latest_week, m = METRICS.find(x=>x.k===state.metric);
+  const kpis = METRICS.map(x=>{
+    const mode = x.flow?'cy':null;
+    const cur=val(g.k,D.current,x.k,w,mode), l=val(g.k,ly(),x.k,w,mode), a=avg5(g.k,x.k,w,mode);
+    const wk = x.flow ? val(g.k,D.current,x.k,w,'wk') : null, wkl = x.flow ? val(g.k,ly(),x.k,w,'wk') : null;
+    return `<div class="kpi ${state.metric===x.k?'on':''}" data-m="${x.k}">
+      <div class="t">${x.k==='dom'?g.dom:x.n}${x.flow?' · CYTD':' · LEVEL'}</div>
+      <div class="v">${fmt(cur)} <span style="font-size:12px;color:var(--dim)">kt</span></div>
+      <div class="r"><span>vs LY ${pctHtml(pct(cur,l))}</span><span>vs avg ${pctHtml(pct(cur,a))}</span></div>
+      <div class="r"><span>${x.flow?'Wk '+w+': '+fmt(wk):'Chg wk: '+fmtChg(val(g.k,D.current,'stk',w),val(g.k,D.current,'stk',w-1))}</span><span>${x.flow?'LY wk: '+fmt(wkl):'LY: '+fmt(l)}</span></div>
+    </div>`;
+  }).join('');
+
+  const mName = m.k==='dom'?g.dom:m.n;
+  document.getElementById('app').innerHTML = `
+  <div class="kpis">${kpis}</div>
+  <div class="grid">
+    <div class="panel"><h3><span>${mName} · ${m.flow?'CUMULATIVE CYTD':'WEEK-END LEVEL'} (kt) ${g.sub?'· '+g.sub:''}</span><span class="seg"><button id="zb" class="${state.zoom?'on':''}">ZOOM</button><button id="fb" class="${state.zoom?'':'on'}">FULL YR</button></span></h3><div class="chart"><canvas id="c1"></canvas></div></div>
+    <div class="panel"><h3><span>${m.flow?mName+' · WEEKLY (kt)':'STOCKS BY LOCATION (kt)'}</span></h3><div class="chart"><canvas id="c2"></canvas></div></div>
+    <div class="panel scroll"><h3><span>EXPORTS BY PORT · TERMINAL (kt)</span></h3>${portTable(g.k)}</div>
+    <div class="panel scroll"><h3><span>PRIMARY DELIVERIES BY PROVINCE · CYTD (kt)</span></h3>${provTable(g.k)}</div>
+    <div class="panel scroll" style="grid-column:1/-1"><h3><span>LAST 10 WEEKS (kt)</span></h3>${recentTable(g)}</div>
+  </div>${notes()}`;
+
+  document.querySelectorAll('.kpi').forEach(el=>el.onclick=()=>{state.metric=el.dataset.m; render();});
+  document.getElementById('zb').onclick=()=>{state.zoom=true; render();};
+  document.getElementById('fb').onclick=()=>{state.zoom=false; render();};
+
+  const wks = maxWeeks(), H = hist();
+  const key = m.flow ? m.k+'_cy' : 'stk';
+  const band = bandSeries(g.k, key);
+  charts.push(lineChart('c1', wks, [
+    ds(label(D.current), series(g.k,D.current,key), 'var(--cur)', null, 3),
+    ds(label(ly()), series(g.k,ly(),key), 'var(--ly)'),
+    ds(H.length+'-yr avg', avgSeries(g.k,m.k, m.flow?'cy':null), 'var(--avg)', [4,3]),
+    {label:'range max', data:band.max, borderWidth:0, pointRadius:0, fill:'+1', backgroundColor:'rgba(154,165,177,.12)'},
+    {label:'range min', data:band.min, borderWidth:0, pointRadius:0, fill:false},
+  ]));
+  if (state.zoom){ const c=charts[charts.length-1]; c.options.scales.x.max=Math.min(wks.length-1, D.latest_week+7); c.update(); }
+
+  if (m.flow){
+    const cur = series(g.k,D.current,m.k+'_wk')||[];
+    charts.push(new Chart(document.getElementById('c2'), {
+      data:{labels:wks, datasets:[
+        {type:'bar', label:label(D.current), data:cur, backgroundColor:css('--cur')},
+        {type:'bar', label:label(ly()), data:series(g.k,ly(),m.k+'_wk'), backgroundColor:'rgba(78,161,255,.55)'},
+        {type:'line', label:H.length+'-yr avg', data:avgSeries(g.k,m.k,'wk'), borderColor:css('--avg'), borderDash:[4,3], pointRadius:0, borderWidth:1.5},
+      ]}, options:chartOpts()}));
+  } else {
+    const n = D.dates[D.current].length;
+    charts.push(new Chart(document.getElementById('c2'), {type:'bar',
+      data:{labels:wks.slice(0,n), datasets:[
+        {label:'Primary', data:series(g.k,D.current,'stk_primary'), backgroundColor:'#f5a524'},
+        {label:'Process', data:series(g.k,D.current,'stk_process'), backgroundColor:'#2fbf71'},
+        {label:'Terminal', data:series(g.k,D.current,'stk_terminal'), backgroundColor:'#4ea1ff'},
+      ]}, options:chartOpts(true)}));
+  }
+}
+
+function fmtChg(a,b){ if(a==null||b==null) return '–'; const d=a-b; return `<span class="${d>=0?'up':'dn'}">${d>=0?'+':''}${fmt(d)}</span>`; }
+
+function portTable(g){
+  const w=D.latest_week; let tw=0,tc=0,tl=0;
+  const rows = D.ports.map(p=>{
+    const wk=at(series(g,D.current,'port_wk_'+p),w)||0, c=at(series(g,D.current,'port_cy_'+p),w)||0, l=at(series(g,ly(),'port_cy_'+p),w)||0;
+    tw+=wk; tc+=c; tl+=l;
+    return `<tr><td>${p}</td><td>${fmt(wk)}</td><td>${fmt(c)}</td><td>${fmt(l)}</td><td>${pctHtml(pct(c,l))}</td></tr>`;
+  }).join('');
+  const dc=val(g,D.current,'expdirect',w,'cy')||0, dl=val(g,ly(),'expdirect',w,'cy')||0, dw=val(g,D.current,'expdirect',w,'wk')||0;
+  return `<table><thead><tr><th>PORT</th><th>WK ${w}</th><th>CYTD</th><th>LY CYTD</th><th>vs LY</th></tr></thead><tbody>${rows}
+   <tr class="tot"><td>Terminal total</td><td>${fmt(tw)}</td><td>${fmt(tc)}</td><td>${fmt(tl)}</td><td>${pctHtml(pct(tc,tl))}</td></tr>
+   <tr><td>Direct (primary → export)</td><td>${fmt(dw)}</td><td>${fmt(dc)}</td><td>${fmt(dl)}</td><td>${pctHtml(pct(dc,dl))}</td></tr>
+   <tr class="tot"><td>Total exports</td><td>${fmt(tw+dw)}</td><td>${fmt(tc+dc)}</td><td>${fmt(tl+dl)}</td><td>${pctHtml(pct(tc+dc,tl+dl))}</td></tr></tbody></table>`;
+}
+
+function provTable(g){
+  const w=D.latest_week; let tc=0,tl=0;
+  const rows = D.provs.map(p=>{
+    const c=at(series(g,D.current,'delprov_'+p),w)||0, l=at(series(g,ly(),'delprov_'+p),w)||0; tc+=c; tl+=l;
+    return `<tr><td>${p}</td><td>${fmt(c)}</td><td>${fmt(l)}</td><td>${pctHtml(pct(c,l))}</td></tr>`;
+  }).join('');
+  const pc=(val(g,D.current,'del',w,'cy')||0)-tc, pl=(val(g,ly(),'del',w,'cy')||0)-tl;
+  return `<table><thead><tr><th>PROV</th><th>CYTD</th><th>LY CYTD</th><th>vs LY</th></tr></thead><tbody>${rows}
+  <tr class="tot"><td>Primary elevators</td><td>${fmt(tc)}</td><td>${fmt(tl)}</td><td>${pctHtml(pct(tc,tl))}</td></tr>
+  <tr><td>Process elevators (direct)</td><td>${fmt(pc)}</td><td>${fmt(pl)}</td><td>${pctHtml(pct(pc,pl))}</td></tr>
+  <tr class="tot"><td>Total producer deliveries</td><td>${fmt(tc+pc)}</td><td>${fmt(tl+pl)}</td><td>${pctHtml(pct(tc+pc,tl+pl))}</td></tr></tbody></table>`;
+}
+
+function recentTable(g){
+  const n=D.latest_week, from=Math.max(1,n-9); let r='';
+  for(let w=n; w>=from; w--){
+    const d=D.dates[D.current][w-1];
+    r+=`<tr><td>${w} · ${d}</td>
+      <td>${fmt(val(g.k,D.current,'del',w,'wk'))}</td><td>${fmt(val(g.k,D.current,'dom',w,'wk'))}</td>
+      <td>${fmt(val(g.k,D.current,'exp',w,'wk'))}</td><td>${fmt(val(g.k,D.current,'stk',w))}</td>
+      <td>${fmt(val(g.k,D.current,'rcpt',w,'wk'))}</td></tr>`;
+  }
+  return `<table><thead><tr><th>WEEK</th><th>DELIVERIES</th><th>${g.dom}</th><th>EXPORTS</th><th>STOCKS</th><th>TERMINAL RECEIPTS</th></tr></thead><tbody>${r}</tbody></table>`;
+}
+
+/* ---------- chart helpers ---------- */
+function css(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function maxWeeks(){ const n=Math.max(...D.years.map(cy=>(D.dates[cy]||[]).length)); return Array.from({length:n},(_,i)=>i+1); }
+function avgSeries(g,m,mode){ return maxWeeks().map(w=>avg5(g,m,w,mode)); }
+function bandSeries(g,key){
+  const H=hist(), W=maxWeeks();
+  const vals = w => H.map(cy=>at(series(g,cy,key),w)).filter(x=>x!=null);
+  return {max:W.map(w=>{const v=vals(w);return v.length?Math.max(...v):null}), min:W.map(w=>{const v=vals(w);return v.length?Math.min(...v):null})};
+}
+function ds(lbl,data,color,dash,width){
+  const c = color.startsWith('var') ? css(color.slice(4,-1)) : color;
+  return {label:lbl, data, borderColor:c, backgroundColor:c, borderDash:dash||[], borderWidth:width||1.75, pointRadius:0, tension:.15, spanGaps:true};
+}
+function chartOpts(stacked){
+  const grid={color:'#1c232b'}, tick={color:'#7d8894',font:{family:'ui-monospace,monospace',size:10}};
+  return {responsive:true, maintainAspectRatio:false, animation:false, interaction:{mode:'index',intersect:false},
+    plugins:{legend:{labels:{color:'#a9b3bd',boxWidth:10,font:{family:'ui-monospace,monospace',size:11},
+      filter:i=>!/^range/.test(i.text)}},
+      tooltip:{filter:i=>!/^range/.test(i.dataset.label), callbacks:{title:t=>'Week '+t[0].label, label:c=>`${c.dataset.label}: ${fmt(c.parsed.y)}`}}},
+    scales:{x:{stacked:!!stacked,grid,ticks:{...tick,maxTicksLimit:14},title:{display:true,text:'grain week',color:'#7d8894',font:{size:10}}},
+            y:{stacked:!!stacked,grid,ticks:{...tick,callback:v=>v.toLocaleString()}}}};
+}
+function lineChart(id,labels,datasets){ return new Chart(document.getElementById(id),{type:'line',data:{labels,datasets},options:chartOpts()}); }
+
+function notes(){
+  return `<div class="note">
+  Source: Canadian Grain Commission, Grain Statistics Weekly (licensed facilities). All figures thousand tonnes. Avg = prior ${hist().length} crop years (${hist().map(label).join(', ')}), aligned by grain week.<br>
+  Deliveries = primary elevator deliveries + producer deliveries to process elevators. Domestic use = process elevator milled/manufactured grain (canola = crush).
+  Exports = terminal exports + direct exports from primary elevators (excludes container shipments). Stocks = commercial stocks at primary, process and terminal elevators.
+  Wheat excludes durum; All Wheat = wheat + durum.</div>`;
+}
+boot();
+</script>
+</body>
+</html>
