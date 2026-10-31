@@ -113,7 +113,22 @@ const at = (arr,w) => arr && arr[w-1]!=null ? arr[w-1] : null;
 const mean = xs => { xs = xs.filter(x=>x!=null); return xs.length ? xs.reduce((a,b)=>a+b,0)/xs.length : null; };
 const label = cy => cy.slice(2,4)+'/'+cy.slice(7,9);
 
-function series(g, cy, key){ return (D.grains[g][cy]||{})[key]; }
+// Cumulative (_cy) and stock-level series: fill interior holiday-gap weeks (no CGC report) by
+// linear interpolation so averages/bands/pace don't jump when a year is missing a week.
+// Weekly flow series (_wk) are left as-is (gap shows in the bars).
+const _fill = {};
+function interp(a){
+  if (!a) return a; const o=a.slice(); let last=-1;
+  for (let i=0;i<o.length;i++){ if (o[i]==null) continue;
+    if (last>=0 && i-last>1) for (let j=last+1;j<i;j++) o[j]=o[last]+(o[i]-o[last])*(j-last)/(i-last);
+    last=i; }
+  return o;
+}
+function series(g, cy, key){
+  const a=(D.grains[g][cy]||{})[key];
+  if (!a || !(/_cy$/.test(key) || /^stk/.test(key) || /^port_cy|^delprov/.test(key))) return a;
+  const k=g+'|'+cy+'|'+key; return _fill[k] || (_fill[k]=interp(a));
+}
 function hist(){ return D.years.slice(1); }          // prior crop years (up to 5)
 function ly(){ return D.years[1]; }
 
@@ -299,7 +314,7 @@ function notes(){
   Domestic disappearance = process elevator use (canola crush / wheat milled) + terminal and primary shipments to Canadian domestic + producer cars to Canadian processors.
   Exports = terminal exports + direct exports from primary elevators + producer cars to US. Stocks = commercial stocks at primary, process and terminal elevators (excl. condo storage).
   Seasonal pace (dotted line) = current CYTD ÷ average share of the full-year total completed by this week in the prior crop years, then traced forward along the average seasonal curve; range = same calc using each prior year alone. It's an arithmetic pace projection, not a forecast.
-  Wheat excludes durum. History uses CGC's revised crop-year files, so a few early-season weeks differ slightly from the Excel originally published that week; CGC publishes no report for some holiday weeks (gap in weekly bars).</div>`;
+  Wheat excludes durum. History uses CGC's revised crop-year files, so a few early-season weeks differ slightly from the Excel originally published that week; CGC publishes no report for some Christmas weeks (wk 21 in several years) — the weekly bars show the gap; cumulative and stock lines interpolate across it so averages stay smooth.</div>`;
 }
 boot();
 </script>
