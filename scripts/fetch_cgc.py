@@ -4,7 +4,7 @@ Fetch CGC Grain Statistics Weekly (GSW) crop-year CSVs and build data/cgc.json
 for Canola and Wheat (ex-durum).
  
 Runs server-side in GitHub Actions (canada.ca blocks browser CORS).
-Needs: pip install curl_cffi  (falls back to system curl).
+Needs: pip install curl_cffi openpyxl\nEvery run cross-checks the latest week against the official Excel 'Summary' tab\nand refuses to publish on any mismatch.
  
 Metric definitions (all kt):
   Matches the CGC GSW Excel 'Summary' tab (verified wk 12 2026-27 + year-ago):
@@ -121,7 +121,7 @@ def norm(h: str) -> str:
  
 def num(x) -> float:
     try:
-        return float(x)
+        return float(str(x).replace(",", "").strip())   # older files use "1,063.7"
     except (TypeError, ValueError):
         return 0.0
  
@@ -201,11 +201,19 @@ def parse_year(txt: str):
             B["expdirect_" + suf][wk] += v
         elif ws == "Primary Shipment Distribution" and met == "Shipment Distribution" and reg == "Canadian Domestic":
             B["dom_wk" if cw else "dom_cy"][wk] += v
-        elif ws == "Summary" and met == "Stocks":
-            B["stk"][wk] += v
-            B["stk_" + STOCK_GROUPS.get(reg, "terminal")][wk] += v
+        elif ws == "Summary" and met in ("Stocks", "Commercial Stocks"):
+            pre = "stk" if met == "Stocks" else "cstk"   # metric renamed in 2024-25
+            B[pre][wk] += v
+            B[pre + "_" + STOCK_GROUPS.get(reg, "terminal")][wk] += v
         elif ws == "Terminal Receipts" and met == "Receipts":
             B["rcpt_wk" if cw else "rcpt_cy"][wk] += v
+    for B in data.values():
+        for suf in ("", "_primary", "_process", "_terminal"):
+            c = B.pop("cstk" + suf, None)
+            if c:
+                for w, v in c.items():
+                    if w not in B["stk" + suf]:
+                        B["stk" + suf][w] = v
     return data, dates
  
  
@@ -223,6 +231,127 @@ def iso(d: str):
         except ValueError:
             pass
     return d
+ 
+ 
+# ---------------------------------------------------------------- validation
+CHECK_KEYS = ["del_wk", "del_cy", "dom_wk", "dom_cy", "exp_wk", "exp_cy", "rcpt_wk", "rcpt_cy", "stk"]
+TOL = 0.35   # kt; components are rounded to 0.1 so sums can differ by a few tenths
+ 
+ 
+def xlsx_urls(cy, wk):
+    b = f"{BASE}/{cy}/"
+    ww = f"{wk:02d}"
+    if int(cy[:4]) >= 2025:
+        return [b + f"{ww}-grain-stats-weekly-{cy}.xlsx", b + f"gsw-shg-{ww}-en.xlsx"]
+    return [b + f"gsw-shg-{ww}-en.xlsx", b + f"gsw-shg-{wk}-en.xlsx", b + f"{ww}-grain-stats-weekly-{cy}.xlsx"]
+ 
+ 
+def summary_from_xlsx(blob):
+    """Read the official GSW workbook 'Summary' tab -> {canola:{...}, wheat:{...}, title}."""
+    import openpyxl
+    wb = openpyxl.load_workbook(io.BytesIO(blob), read_only=True, data_only=True)
+    name = next((n for n in wb.sheetnames if n.strip().lower() == "summary"), None)
+    if not name:
+        raise ValueError(f"no Summary sheet: {wb.sheetnames}")
+    rows = [[("" if c is None else c) for c in r] for r in wb[name].iter_rows(values_only=True)]
+    t = lambda v: " ".join(str(v).split()) if v != "" else ""
+    title, hdr = None, None
+    for i, r in enumerate(rows):
+        vals = [t(v) for v in r]
+        title = title or next((v for v in vals if "Handling Summary" in v), None)
+        if title and hdr is None and "Canola" in vals:
+            hdr = i
+            col = {"canola": vals.index("Canola"), "wheat": vals.index("Wheat")}
+            break
+    if hdr is None:
+        raise ValueError("Summary header row not found")
+    res = {"title": title, "canola": {}, "wheat": {}}
+    secs = [("producer deliveries", "del"), ("terminal receipts", "rcpt"), ("exports", "exp"), ("domestic disappearance", "dom")]
+    per = {"Current Week": "wk", "To Date": "cy"}
+    sec, stocks, scol = None, False, col
+    for r in rows[hdr + 1:]:
+        a = t(r[0]) if r else ""
+        joined = " ".join(t(v) for v in r)
+        hit = next((k for lab, k in secs if a.lower().startswith(lab)), None)
+        if hit:
+            sec = hit
+            continue
+        if "Commercial Stocks, Week" in joined:
+            stocks, sec = True, None
+            continue
+        if stocks and "Canola" in [t(v) for v in r]:
+            vals = [t(v) for v in r]
+            scol = {"canola": vals.index("Canola"), "wheat": vals.index("Wheat")}
+        if a in ("Current Week", "Week Ago", "To Date", "Year Ago"):
+            if sec and a in per:
+                for g, c in col.items():
+                    v = r[c] if c < len(r) else ""
+                    res[g][f"{sec}_{per[a]}"] = float(v) if isinstance(v, (int, float)) else 0.0
+        elif a:
+            sec = None
+        if stocks and a.lower() == "total":
+            for g, c in scol.items():
+                v = r[c] if c < len(r) else ""
+                res[g]["stk"] = float(v) if isinstance(v, (int, float)) else 0.0
+            stocks = False
+    return res
+ 
+ 
+def validate(out):
+    errs, notes = [], []
+    cur, lw = out["current"], out["latest_week"]
+    # 1. structure: every grain/year has core series; history years complete
+    for cy in out["years"]:
+        n = len(out["dates"][cy])
+        if cy != cur and n < 50:
+            errs.append(f"{cy}: only {n} weeks in file")
+        for g in GRAINS.values():
+            S = out["grains"][g].get(cy, {})
+            for k in CHECK_KEYS:
+                if k not in S:
+                    errs.append(f"{g} {cy}: series {k} missing (CGC may have renamed a metric)")
+            for k in ("del_cy", "dom_cy", "exp_cy", "stk"):
+                arr = S.get(k) or []
+                if arr and (arr[-1] is None or arr[-1] <= 0):
+                    errs.append(f"{g} {cy}: {k} last value is {arr[-1]}")
+                if any(v is not None and v < 0 for v in arr):
+                    errs.append(f"{g} {cy}: negative values in {k}")
+    # 2. no going backwards vs the currently published file
+    try:
+        prev = json.load(open(OUT))
+        if (prev.get("current"), prev.get("latest_week", 0)) > (cur, lw):
+            errs.append(f"latest week went backwards: {prev.get('current')} wk{prev.get('latest_week')} -> {cur} wk{lw}")
+    except (FileNotFoundError, ValueError):
+        pass
+    # 3. official Excel Summary tab for the latest week must match exactly
+    xl, url_used = None, None
+    for u in xlsx_urls(cur, lw):
+        code, raw = _get(u)
+        if code == 200 and raw[:2] == b"PK":
+            xl, url_used = summary_from_xlsx(raw), u
+            break
+    if xl is None:
+        errs.append(f"official Excel for {cur} wk{lw} not found - cannot verify")
+    else:
+        if f"Week {lw}" not in (xl["title"] or "").replace(",", ""):
+            errs.append(f"Excel title doesn't say Week {lw}: {xl['title']}")
+        cells, maxd = 0, 0.0
+        for g in GRAINS.values():
+            for k in CHECK_KEYS:
+                a = xl[g].get(k)
+                b = (out["grains"][g][cur].get(k) or [None] * lw)[lw - 1]
+                if a is None:
+                    errs.append(f"Excel Summary missing {g} {k}")
+                    continue
+                d = abs(a - (b or 0.0))
+                cells += 1
+                maxd = max(maxd, d)
+                if d > TOL:
+                    errs.append(f"MISMATCH {g} {k} wk{lw}: Excel {a} vs terminal {b}")
+        out["verified"] = {"week": lw, "crop_year": cur, "cells": cells, "max_diff": round(maxd, 2),
+                           "source": url_used, "at": out["updated"]}
+        print(f"  Excel cross-check: {cells} cells, max diff {maxd:.2f} kt")
+    return errs
  
  
 def main():
@@ -265,6 +394,14 @@ def main():
     lw = len(out["dates"][current])
     out["latest_week"] = lw
     out["latest_date"] = out["dates"][current][-1] if lw else None
+ 
+    if not LOCAL_DIR:
+        errs = validate(out)
+        if errs:
+            print("\nVALIDATION FAILED - not publishing:", file=sys.stderr)
+            for e in errs:
+                print("  - " + e, file=sys.stderr)
+            sys.exit(1)
  
     os.makedirs(os.path.dirname(os.path.abspath(OUT)), exist_ok=True)
     with open(OUT, "w") as f:
