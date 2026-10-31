@@ -53,18 +53,16 @@
 
 <script>
 const GRAINS = [
-  {k:'canola',   n:'CANOLA',    dom:'CRUSH'},
-  {k:'wheat',    n:'WHEAT',     dom:'DOMESTIC PROCESSING', sub:'ex-durum'},
-  {k:'durum',    n:'DURUM',     dom:'DOMESTIC PROCESSING'},
-  {k:'allwheat', n:'ALL WHEAT', dom:'DOMESTIC PROCESSING', sub:'wheat + durum'},
+  {k:'canola', n:'CANOLA', dom:'DOMESTIC DISAPPEARANCE', crush:'CRUSH'},
+  {k:'wheat',  n:'WHEAT',  dom:'DOMESTIC DISAPPEARANCE', crush:'MILLED', sub:'ex-durum'},
 ];
 const METRICS = [
   {k:'del', n:'PRODUCER DELIVERIES', flow:true},
-  {k:'dom', n:'DOMESTIC USE',        flow:true},
+  {k:'dom', n:'DOMESTIC DISAPPEARANCE', flow:true},
   {k:'exp', n:'EXPORTS',             flow:true},
   {k:'stk', n:'COMMERCIAL STOCKS',   flow:false},
 ];
-let D, state = {tab:'summary', metric:'del', zoom:true}, charts = [];
+let D, state = {tab:'canola', metric:'del', zoom:true}, charts = [];
 
 const fmt = (v,d=1) => v==null||isNaN(v) ? '–' : v.toLocaleString('en-CA',{minimumFractionDigits:d,maximumFractionDigits:d});
 const pct = (a,b) => (a==null||b==null||!b) ? null : (a/b-1)*100;
@@ -95,52 +93,14 @@ function boot(){
 }
 
 function renderTabs(){
-  const t = [{k:'summary',n:'SUMMARY'}, ...GRAINS];
+  const t = GRAINS;
   document.getElementById('tabs').innerHTML = t.map(x=>`<button data-k="${x.k}" class="${state.tab===x.k?'on':''}">${x.n}</button>`).join('');
   document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{state.tab=b.dataset.k; renderTabs(); render();});
 }
 
 function render(){
   charts.forEach(c=>c.destroy()); charts=[];
-  state.tab==='summary' ? renderSummary() : renderGrain(GRAINS.find(g=>g.k===state.tab));
-}
-
-/* ---------- SUMMARY ---------- */
-function renderSummary(){
-  const w = D.latest_week;
-  let rows = '';
-  for (const g of GRAINS){
-    METRICS.forEach((m,i)=>{
-      const mode = m.flow ? 'cy' : null;
-      const cur = val(g.k,D.current,m.k,w,mode), l = val(g.k,ly(),m.k,w,mode), a = avg5(g.k,m.k,w,mode);
-      const wk = m.flow ? val(g.k,D.current,m.k,w,'wk') : null;
-      const wkl = m.flow ? val(g.k,ly(),m.k,w,'wk') : null;
-      rows += `<tr${i===0?' style="border-top:2px solid var(--line)"':''}>
-        <td>${i===0?`<b style="color:var(--amber)">${g.n}</b>`:''}</td><td style="text-align:left">${m.k==='dom'?g.dom:m.n}</td>
-        <td>${m.flow?fmt(wk):'–'}</td><td>${m.flow?fmt(wkl):'–'}</td>
-        <td>${fmt(cur)}</td><td>${fmt(l)}</td><td>${pctHtml(pct(cur,l))}</td><td>${fmt(a)}</td><td>${pctHtml(pct(cur,a))}</td></tr>`;
-    });
-  }
-  document.getElementById('app').innerHTML = `
-  <div class="panel scroll"><h3><span>WEEK ${w} SNAPSHOT · KT</span><span>flows: CYTD · stocks: level at week end</span></h3>
-  <table><thead><tr><th>GRAIN</th><th style="text-align:left">METRIC</th><th>WEEK</th><th>WEEK LY</th><th>CYTD / LEVEL</th><th>LY</th><th>vs LY</th><th>${hist().length}-YR AVG</th><th>vs AVG</th></tr></thead>
-  <tbody>${rows}</tbody></table></div>
-  <div class="grid" style="margin-top:10px">
-    <div class="panel"><h3>CANOLA · CYTD EXPORTS vs CRUSH</h3><div class="chart"><canvas id="s1"></canvas></div></div>
-    <div class="panel"><h3>ALL WHEAT · CYTD EXPORTS vs LY / AVG</h3><div class="chart"><canvas id="s2"></canvas></div></div>
-  </div>${notes()}`;
-  const n = D.dates[D.current].length, wks = maxWeeks();
-  charts.push(lineChart('s1', wks, [
-    ds('Exports '+label(D.current), series('canola',D.current,'exp_cy'), 'var(--cur)'),
-    ds('Exports '+label(ly()), series('canola',ly(),'exp_cy'), 'var(--ly)', [4,3]),
-    ds('Crush '+label(D.current), series('canola',D.current,'dom_cy'), '#2fbf71'),
-    ds('Crush '+label(ly()), series('canola',ly(),'dom_cy'), '#2fbf71', [4,3]),
-  ]));
-  charts.push(lineChart('s2', wks, [
-    ds(label(D.current), series('allwheat',D.current,'exp_cy'), 'var(--cur)'),
-    ds(label(ly()), series('allwheat',ly(),'exp_cy'), 'var(--ly)', [4,3]),
-    ds(hist().length+'-yr avg', avgSeries('allwheat','exp','cy'), 'var(--avg)', [2,2]),
-  ]));
+  renderGrain(GRAINS.find(g=>g.k===state.tab));
 }
 
 /* ---------- GRAIN VIEW ---------- */
@@ -216,7 +176,7 @@ function portTable(g){
   const dc=val(g,D.current,'expdirect',w,'cy')||0, dl=val(g,ly(),'expdirect',w,'cy')||0, dw=val(g,D.current,'expdirect',w,'wk')||0;
   return `<table><thead><tr><th>PORT</th><th>WK ${w}</th><th>CYTD</th><th>LY CYTD</th><th>vs LY</th></tr></thead><tbody>${rows}
    <tr class="tot"><td>Terminal total</td><td>${fmt(tw)}</td><td>${fmt(tc)}</td><td>${fmt(tl)}</td><td>${pctHtml(pct(tc,tl))}</td></tr>
-   <tr><td>Direct (primary → export)</td><td>${fmt(dw)}</td><td>${fmt(dc)}</td><td>${fmt(dl)}</td><td>${pctHtml(pct(dc,dl))}</td></tr>
+   <tr><td>Direct (primaries + producer cars)</td><td>${fmt(dw)}</td><td>${fmt(dc)}</td><td>${fmt(dl)}</td><td>${pctHtml(pct(dc,dl))}</td></tr>
    <tr class="tot"><td>Total exports</td><td>${fmt(tw+dw)}</td><td>${fmt(tc+dc)}</td><td>${fmt(tl+dl)}</td><td>${pctHtml(pct(tc+dc,tl+dl))}</td></tr></tbody></table>`;
 }
 
@@ -229,7 +189,7 @@ function provTable(g){
   const pc=(val(g,D.current,'del',w,'cy')||0)-tc, pl=(val(g,ly(),'del',w,'cy')||0)-tl;
   return `<table><thead><tr><th>PROV</th><th>CYTD</th><th>LY CYTD</th><th>vs LY</th></tr></thead><tbody>${rows}
   <tr class="tot"><td>Primary elevators</td><td>${fmt(tc)}</td><td>${fmt(tl)}</td><td>${pctHtml(pct(tc,tl))}</td></tr>
-  <tr><td>Process elevators (direct)</td><td>${fmt(pc)}</td><td>${fmt(pl)}</td><td>${pctHtml(pct(pc,pl))}</td></tr>
+  <tr><td>Process elevators + producer cars</td><td>${fmt(pc)}</td><td>${fmt(pl)}</td><td>${pctHtml(pct(pc,pl))}</td></tr>
   <tr class="tot"><td>Total producer deliveries</td><td>${fmt(tc+pc)}</td><td>${fmt(tl+pl)}</td><td>${pctHtml(pct(tc+pc,tl+pl))}</td></tr></tbody></table>`;
 }
 
@@ -238,11 +198,11 @@ function recentTable(g){
   for(let w=n; w>=from; w--){
     const d=D.dates[D.current][w-1];
     r+=`<tr><td>${w} · ${d}</td>
-      <td>${fmt(val(g.k,D.current,'del',w,'wk'))}</td><td>${fmt(val(g.k,D.current,'dom',w,'wk'))}</td>
+      <td>${fmt(val(g.k,D.current,'del',w,'wk'))}</td><td>${fmt(val(g.k,D.current,'dom',w,'wk'))}</td><td>${fmt(val(g.k,D.current,'crush',w,'wk'))}</td>
       <td>${fmt(val(g.k,D.current,'exp',w,'wk'))}</td><td>${fmt(val(g.k,D.current,'stk',w))}</td>
       <td>${fmt(val(g.k,D.current,'rcpt',w,'wk'))}</td></tr>`;
   }
-  return `<table><thead><tr><th>WEEK</th><th>DELIVERIES</th><th>${g.dom}</th><th>EXPORTS</th><th>STOCKS</th><th>TERMINAL RECEIPTS</th></tr></thead><tbody>${r}</tbody></table>`;
+  return `<table><thead><tr><th>WEEK</th><th>DELIVERIES</th><th>DOM. DISAPP.</th><th>${g.crush}</th><th>EXPORTS</th><th>STOCKS</th><th>TERMINAL RECEIPTS</th></tr></thead><tbody>${r}</tbody></table>`;
 }
 
 /* ---------- chart helpers ---------- */
@@ -272,9 +232,10 @@ function lineChart(id,labels,datasets){ return new Chart(document.getElementById
 function notes(){
   return `<div class="note">
   Source: Canadian Grain Commission, Grain Statistics Weekly (licensed facilities). All figures thousand tonnes. Avg = prior ${hist().length} crop years (${hist().map(label).join(', ')}), aligned by grain week.<br>
-  Deliveries = primary elevator deliveries + producer deliveries to process elevators. Domestic use = process elevator milled/manufactured grain (canola = crush).
-  Exports = terminal exports + direct exports from primary elevators (excludes container shipments). Stocks = commercial stocks at primary, process and terminal elevators.
-  Wheat excludes durum; All Wheat = wheat + durum.</div>`;
+  Figures match the GSW Excel Summary tab. Deliveries = primary + process elevator producer deliveries + producer cars.
+  Domestic disappearance = process elevator use (canola crush / wheat milled) + terminal and primary shipments to Canadian domestic + producer cars to Canadian processors.
+  Exports = terminal exports + direct exports from primary elevators + producer cars to US. Stocks = commercial stocks at primary, process and terminal elevators (excl. condo storage).
+  Wheat excludes durum.</div>`;
 }
 boot();
 </script>
