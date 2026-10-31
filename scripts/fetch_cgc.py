@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
 """
 Fetch CGC Grain Statistics Weekly (GSW) crop-year CSVs and build data/cgc.json
-for Canola, Wheat (ex-durum), Amber Durum and All Wheat.
+for Canola and Wheat (ex-durum).
  
 Runs server-side in GitHub Actions (canada.ca blocks browser CORS).
 Needs: pip install curl_cffi  (falls back to system curl).
  
 Metric definitions (all kt):
-  deliveries  = Primary 'Deliveries' (sum of provinces) + Process 'Producer Deliveries'
-  domestic    = Process 'Milled/Mfg Grain'  (canola = crush)
-  exports     = Terminal Exports (all grades/ports) + Primary Shipment Distribution
-                'Export Destinations' (direct exports from primaries)
+  Matches the CGC GSW Excel 'Summary' tab (verified wk 12 2026-27 + year-ago):
+  deliveries  = Primary 'Deliveries' + Process 'Producer Deliveries' + Producer Cars 'Shipments'
+  domestic    = Domestic disappearance = Process 'Milled/Mfg Grain' + Terminal Disposition
+                'Canadian Domestic' + Primary Shipment Distribution 'Canadian Domestic'
+                + Producer Cars destinations 'Canada Processors'
+  crush       = Process 'Milled/Mfg Grain' (canola crush)
+  exports     = Terminal Exports + Primary Shipment Distribution 'Export Destinations'
+                + Producer Cars destinations 'United States*'
   stocks      = Summary 'Stocks' (commercial: primary + process + terminals)
 """
 import csv
@@ -31,7 +35,7 @@ N_HIST = int(os.environ.get("CGC_HIST_YEARS", "5"))   # prior crop years for LY 
 OUT = os.environ.get("CGC_OUT", os.path.join(os.path.dirname(__file__), "..", "data", "cgc.json"))
 LOCAL_DIR = os.environ.get("CGC_LOCAL_DIR")             # optional: read CSVs from disk (testing)
  
-GRAINS = {"Canola": "canola", "Wheat": "wheat", "Amber Durum": "durum"}
+GRAINS = {"Canola": "canola", "Wheat": "wheat"}
 PORTS = ["Vancouver", "Prince Rupert", "Churchill", "Thunder Bay", "Bay & Lakes", "St. Lawrence"]
 PROVS = {"Manitoba": "MB", "Saskatchewan": "SK", "Alberta": "AB", "British Columbia": "BC"}
 STOCK_GROUPS = {"Primary Elevators": "primary", "Process Elevators": "process"}  # rest = terminal
@@ -173,6 +177,18 @@ def parse_year(txt: str):
                 B["del_cy"][wk] += v
         elif ws == "Process" and met == "Milled/Mfg Grain":
             B["dom_wk" if cw else "dom_cy"][wk] += v
+            B["crush_wk" if cw else "crush_cy"][wk] += v
+        elif ws == "Terminal Disposition" and met == "Canadian Domestic":
+            B["dom_wk" if cw else "dom_cy"][wk] += v
+        elif ws == "Producer Cars" and met == "Shipments":
+            B["del_wk" if cw else "del_cy"][wk] += v
+        elif ws == "Producer Cars" and met == "Shipment Destinations":
+            suf = "wk" if cw else "cy"
+            if reg == "Canada Processors":
+                B["dom_" + suf][wk] += v
+            elif reg.startswith("United States"):
+                B["exp_" + suf][wk] += v
+                B["expdirect_" + suf][wk] += v
         elif ws == "Terminal Exports" and met == "Exports":
             suf = "wk" if cw else "cy"
             B["exp_" + suf][wk] += v
@@ -183,6 +199,8 @@ def parse_year(txt: str):
             suf = "wk" if cw else "cy"
             B["exp_" + suf][wk] += v
             B["expdirect_" + suf][wk] += v
+        elif ws == "Primary Shipment Distribution" and met == "Shipment Distribution" and reg == "Canadian Domestic":
+            B["dom_wk" if cw else "dom_cy"][wk] += v
         elif ws == "Summary" and met == "Stocks":
             B["stk"][wk] += v
             B["stk_" + STOCK_GROUPS.get(reg, "terminal")][wk] += v
@@ -232,20 +250,13 @@ def main():
         "years": keep,
         "ports": PORTS,
         "provs": list(PROVS.values()),
-        "grains": {k: {} for k in list(GRAINS.values()) + ["allwheat"]},
+        "grains": {k: {} for k in GRAINS.values()},
         "dates": {},
     }
     for cy in keep:
         data, dates = parse_year(raw[cy])
         nweeks = max(dates) if dates else 0
         # Stocks at week end are levels - all other *_cy are cumulative; *_wk are flows.
-        # all-wheat = wheat + durum
-        allw = new_bucket()
-        for src in ("wheat", "durum"):
-            for k, wv in data[src].items():
-                for w, v in wv.items():
-                    allw[k][w] += v
-        data["allwheat"] = allw
         for gk, bucket in data.items():
             out["grains"][gk][cy] = to_arrays(bucket, nweeks)
         out["dates"][cy] = [iso(dates.get(w, "")) for w in range(1, nweeks + 1)]
