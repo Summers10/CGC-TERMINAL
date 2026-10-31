@@ -4,7 +4,7 @@ Fetch CGC Grain Statistics Weekly (GSW) crop-year CSVs and build data/cgc.json
 for Canola, Wheat (ex-durum), Amber Durum and All Wheat.
  
 Runs server-side in GitHub Actions (canada.ca blocks browser CORS).
-Stdlib only.
+Needs: pip install curl_cffi  (falls back to system curl).
  
 Metric definitions (all kt):
   deliveries  = Primary 'Deliveries' (sum of provinces) + Process 'Producer Deliveries'
@@ -47,15 +47,47 @@ def prev_cy(cy: str, n: int = 1) -> str:
     return f"{s}-{s + 1}"
  
  
-def _curl(url: str):
-    """canada.ca (Akamai) can stall plain python requests from cloud IPs; curl w/ HTTP2 + browser headers is more reliable."""
-    cmd = ["curl", "-sS", "-L", "--http2", "--compressed", "--connect-timeout", "20", "--max-time", "90",
-           "-H", f"User-Agent: {UA}", "-H", "Accept: text/csv,text/plain,*/*;q=0.8",
-           "-H", "Accept-Language: en-CA,en;q=0.9", "-H", "Referer: https://www.canada.ca/en/grain-commission/services/statistics/grain-statistics-weekly.html",
+REFERER = "https://www.canada.ca/en/grain-commission/services/statistics/grain-statistics-weekly.html"
+ 
+ 
+def _via_cffi(url):
+    """Real Chrome TLS/HTTP2 fingerprint - canada.ca's Akamai edge resets non-browser HTTP/2 clients."""
+    from curl_cffi import requests as creq  # pip install curl_cffi
+    r = creq.get(url, impersonate="chrome", timeout=90, headers={"Referer": REFERER, "Accept-Language": "en-CA,en;q=0.9"})
+    return r.status_code, r.content, ""
+ 
+ 
+def _via_curl(url, extra):
+    cmd = ["curl", "-sS", "-L", "--connect-timeout", "20", "--max-time", "90", *extra,
            "-w", "\n__HTTP__%{http_code}", url]
     r = subprocess.run(cmd, capture_output=True, timeout=120)
     body, _, code = r.stdout.rpartition(b"\n__HTTP__")
-    return int(code or 0), body, r.stderr.decode(errors="replace").strip()
+    return int(code or 0), body, r.stderr.decode(errors="replace").strip()[:120]
+ 
+ 
+STRATEGIES = [
+    ("cffi-chrome", _via_cffi),
+    ("curl-http1.1", lambda u: _via_curl(u, ["--http1.1", "-H", "Accept: */*", "-H", "Accept-Language: en-CA,en;q=0.9"])),
+    ("curl-plain", lambda u: _via_curl(u, [])),
+]
+_good = None  # remember the first strategy that works
+ 
+ 
+def _get(url):
+    global _good
+    order = [_good] if _good else STRATEGIES
+    for name, fn in order:
+        t0 = time.time()
+        try:
+            code, raw, err = fn(url)
+        except Exception as e:  # noqa: BLE001
+            code, raw, err = 0, b"", f"{type(e).__name__}: {e}"[:120]
+        print(f"    [{name}] HTTP {code} {len(raw)/1e6:.1f} MB {time.time()-t0:.0f}s {err}", flush=True)
+        if code in (200, 404):
+            if code == 200:
+                _good = (name, fn)
+            return code, raw
+    return 0, b""
  
  
 def fetch_csv(cy: str):
@@ -67,21 +99,14 @@ def fetch_csv(cy: str):
         return None
     for pat in NAME_PATTERNS:
         url = f"{BASE}/{cy}/{pat.format(cy=cy)}"
-        for attempt in range(2):
-            t0 = time.time()
-            try:
-                code, raw, err = _curl(url)
-            except subprocess.TimeoutExpired:
-                code, raw, err = 0, b"", "timeout"
-            print(f"  {cy} {pat.split('-{')[0]}: HTTP {code} {len(raw)/1e6:.1f} MB {time.time()-t0:.0f}s {err}", flush=True)
-            if code == 404:
-                break
-            if code == 200:
-                txt = raw.decode("utf-8-sig", errors="replace")
-                if not txt.lstrip().startswith("<"):
-                    return txt
-                break
-            time.sleep(5)
+        print(f"  {cy}: {url.rsplit('/', 1)[-1]}", flush=True)
+        code, raw = _get(url)
+        if code == 200:
+            txt = raw.decode("utf-8-sig", errors="replace")
+            if not txt.lstrip().startswith("<"):
+                return txt
+        if code == 0 and not _good:
+            sys.exit("All download methods blocked by canada.ca - see log above")
     print(f"  {cy}: not found", file=sys.stderr, flush=True)
     return None
  
