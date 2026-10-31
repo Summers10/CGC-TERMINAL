@@ -7,13 +7,22 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
   :root{
-    --bg:#0b0d10; --panel:#12161b; --line:#232a33; --txt:#d7dde4; --dim:#7d8894;
-    --amber:#f5a524; --cur:#f5a524; --ly:#4ea1ff; --avg:#9aa5b1; --up:#2fbf71; --dn:#ef4b4b;
+    --bg:#0b0d10; --panel:#12161b; --line:#232a33; --txt:#d7dde4; --dim:#7d8894; --grid:#1c232b; --leg:#a9b3bd;
+    --amber:#f5a524; --cur:#f5a524; --ly:#4ea1ff; --avg:#9aa5b1; --up:#2fbf71; --dn:#ef4b4b; --band:rgba(154,165,177,.12);
+  }
+  :root[data-theme=light]{
+    --bg:#f4f5f7; --panel:#ffffff; --line:#d8dde3; --txt:#1b2027; --dim:#5f6975; --grid:#e6e9ed; --leg:#3d4652;
+    --amber:#d98200; --cur:#e08a00; --ly:#1f6fd1; --avg:#6b7480; --up:#13894b; --dn:#c62828; --band:rgba(107,116,128,.13);
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--txt);font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
   header{display:flex;flex-wrap:wrap;gap:12px;align-items:baseline;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line)}
   h1{margin:0;font-size:16px;letter-spacing:.08em;color:var(--amber)}
+  .brand{display:flex;align-items:center;gap:12px}
+  #theme{background:transparent;border:1px solid var(--line);color:var(--dim);font:inherit;font-size:11px;padding:3px 9px;cursor:pointer;letter-spacing:.05em}
+  #theme:hover{color:var(--txt)}
+  .kpi .proj{margin-top:6px;padding-top:6px;border-top:1px dashed var(--line);font-size:12px;color:var(--dim);display:flex;justify-content:space-between}
+  .kpi .proj b{color:var(--cur);font-weight:normal}
   .meta{color:var(--dim);font-size:12px}
   nav{display:flex;flex-wrap:wrap;gap:4px;padding:8px 16px;border-bottom:1px solid var(--line)}
   nav button,.seg button{background:transparent;color:var(--dim);border:1px solid var(--line);padding:5px 12px;font:inherit;cursor:pointer;letter-spacing:.05em}
@@ -37,9 +46,11 @@
   th{color:var(--dim);font-weight:normal}
   tr.tot td{color:var(--amber)}
   .seg{display:inline-flex;gap:2px}
-  .seg button{padding:2px 8px;font-size:11px}
+  .seg button{padding:2px 8px;font-size:11px;white-space:nowrap}
+  .seg{flex-shrink:0}
   #banner div{padding:8px 16px;font-size:12px;letter-spacing:.05em;border-bottom:1px solid var(--line)}
   .stale{background:#3a0d0d;color:#ff8a8a}
+  :root[data-theme=light] .stale{background:#fde8e8;color:#b71c1c}
   .vbad{color:var(--up)} .vwarn{color:var(--amber)}
   .note{color:var(--dim);font-size:11px;margin-top:12px;line-height:1.6}
   .scroll{overflow-x:auto}
@@ -48,7 +59,7 @@
 </head>
 <body>
 <header>
-  <h1>CGC TERMINAL</h1>
+  <div class="brand"><button id="theme" title="Toggle light / dark">☀ LIGHT</button><h1>CGC TERMINAL</h1></div>
   <div class="meta" id="meta">loading…</div>
 </header>
 <div id="banner"></div>
@@ -61,12 +72,39 @@ const GRAINS = [
   {k:'wheat',  n:'WHEAT',  dom:'DOMESTIC DISAPPEARANCE', crush:'MILLED', sub:'ex-durum'},
 ];
 const METRICS = [
-  {k:'del', n:'PRODUCER DELIVERIES', flow:true},
-  {k:'dom', n:'DOMESTIC DISAPPEARANCE', flow:true},
-  {k:'exp', n:'EXPORTS',             flow:true},
-  {k:'stk', n:'COMMERCIAL STOCKS',   flow:false},
+  {k:'exp', n:'EXPORTS',                flow:true, proj:true},
+  {k:'dom', n:'DOMESTIC DISAPPEARANCE', flow:true, proj:true},
+  {k:'stk', n:'COMMERCIAL STOCKS',      flow:false},
+  {k:'del', n:'PRODUCER DELIVERIES',    flow:true},
 ];
-let D, state = {tab:'canola', metric:'del', zoom:true}, charts = [];
+let D, state = {tab:'canola', metric:'exp', zoom:false}, charts = [];
+
+/* ---------- theme ---------- */
+function getTheme(){ try{ return localStorage.getItem('cgc-theme')||'dark'; }catch(e){ return 'dark'; } }
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme', t);
+  document.getElementById('theme').textContent = t==='dark' ? '☀ LIGHT' : '☾ DARK';
+  try{ localStorage.setItem('cgc-theme', t); }catch(e){}
+}
+applyTheme(getTheme());
+document.getElementById('theme').onclick = ()=>{ applyTheme(getTheme()==='dark'?'light':'dark'); if (D) render(); };
+
+/* ---------- seasonal pace projection ----------
+   For each prior crop year: share of the year's final total done by week w.
+   Implied final = current CYTD / average share. Range = using each year's share alone. */
+function finalOf(g, cy, m){ const a = series(g,cy,m+'_cy')||[]; for(let i=a.length-1;i>=0;i--) if(a[i]!=null) return a[i]; return null; }
+function shareAt(g, cy, m, w){ const f=finalOf(g,cy,m), v=val(g,cy,m,w,'cy'); return (f && v!=null) ? v/f : null; }
+function projection(g, m){
+  const w = D.latest_week, cur = val(g,D.current,m,w,'cy');
+  const H = hist().filter(cy => (D.dates[cy]||[]).length >= 50);
+  const shares = H.map(cy=>shareAt(g,cy,m,w)).filter(x=>x);
+  if (!cur || !shares.length) return null;
+  const avgShare = mean(shares);
+  const implied = cur/avgShare, each = shares.map(s=>cur/s);
+  const W = maxWeeks();
+  const line = W.map(x => x < w ? null : (x===w ? cur : (()=>{ const sh=mean(H.map(cy=>shareAt(g,cy,m,x)).filter(v=>v)); return sh ? implied*sh : null; })()));
+  return {implied, lo:Math.min(...each), hi:Math.max(...each), avgShare, line, lyFinal:finalOf(g,ly(),m), avgFinal:mean(H.map(cy=>finalOf(g,cy,m))), n:shares.length};
+}
 
 const fmt = (v,d=1) => v==null||isNaN(v) ? '–' : v.toLocaleString('en-CA',{minimumFractionDigits:d,maximumFractionDigits:d});
 const pct = (a,b) => (a==null||b==null||!b) ? null : (a/b-1)*100;
@@ -129,6 +167,7 @@ function renderGrain(g){
       <div class="v">${fmt(cur)} <span style="font-size:12px;color:var(--dim)">kt</span></div>
       <div class="r"><span>vs LY ${pctHtml(pct(cur,l))}</span><span>vs avg ${pctHtml(pct(cur,a))}</span></div>
       <div class="r"><span>${x.flow?'Wk '+w+': '+fmt(wk):'Chg wk: '+fmtChg(val(g.k,D.current,'stk',w),val(g.k,D.current,'stk',w-1))}</span><span>${x.flow?'LY wk: '+fmt(wkl):'LY: '+fmt(l)}</span></div>
+      ${x.proj ? projRow(g.k,x.k) : ''}
     </div>`;
   }).join('');
 
@@ -136,7 +175,7 @@ function renderGrain(g){
   document.getElementById('app').innerHTML = `
   <div class="kpis">${kpis}</div>
   <div class="grid">
-    <div class="panel"><h3><span>${mName} · ${m.flow?'CUMULATIVE CYTD':'WEEK-END LEVEL'} (kt) ${g.sub?'· '+g.sub:''}</span><span class="seg"><button id="zb" class="${state.zoom?'on':''}">ZOOM</button><button id="fb" class="${state.zoom?'':'on'}">FULL YR</button></span></h3><div class="chart"><canvas id="c1"></canvas></div></div>
+    <div class="panel"><h3><span>${mName} · ${m.flow?'CUMULATIVE CYTD':'WEEK-END LEVEL'} (kt) ${g.sub?'· '+g.sub:''}${m.proj?' · dotted = seasonal pace':''}</span><span class="seg"><button id="zb" class="${state.zoom?'on':''}">ZOOM</button><button id="fb" class="${state.zoom?'':'on'}">FULL YR</button></span></h3><div class="chart"><canvas id="c1"></canvas></div></div>
     <div class="panel"><h3><span>${m.flow?mName+' · WEEKLY (kt)':'STOCKS BY LOCATION (kt)'}</span></h3><div class="chart"><canvas id="c2"></canvas></div></div>
     <div class="panel scroll"><h3><span>EXPORTS BY PORT · TERMINAL (kt)</span></h3>${portTable(g.k)}</div>
     <div class="panel scroll"><h3><span>PRIMARY DELIVERIES BY PROVINCE · CYTD (kt)</span></h3>${provTable(g.k)}</div>
@@ -150,11 +189,13 @@ function renderGrain(g){
   const wks = maxWeeks(), H = hist();
   const key = m.flow ? m.k+'_cy' : 'stk';
   const band = bandSeries(g.k, key);
+  const P = m.proj ? projection(g.k, m.k) : null;
   charts.push(lineChart('c1', wks, [
     ds(label(D.current), series(g.k,D.current,key), 'var(--cur)', null, 3),
+    ...(P ? [ds(`${label(D.current)} seasonal pace → ${fmt(P.implied,0)}`, P.line, 'var(--cur)', [5,4], 2)] : []),
     ds(label(ly()), series(g.k,ly(),key), 'var(--ly)'),
     ds(H.length+'-yr avg', avgSeries(g.k,m.k, m.flow?'cy':null), 'var(--avg)', [4,3]),
-    {label:'range max', data:band.max, borderWidth:0, pointRadius:0, fill:'+1', backgroundColor:'rgba(154,165,177,.12)'},
+    {label:'range max', data:band.max, borderWidth:0, pointRadius:0, fill:'+1', backgroundColor:css('--band')},
     {label:'range min', data:band.min, borderWidth:0, pointRadius:0, fill:false},
   ]));
   if (state.zoom){ const c=charts[charts.length-1]; c.options.scales.x.max=Math.min(wks.length-1, D.latest_week+7); c.update(); }
@@ -164,7 +205,7 @@ function renderGrain(g){
     charts.push(new Chart(document.getElementById('c2'), {
       data:{labels:wks, datasets:[
         {type:'bar', label:label(D.current), data:cur, backgroundColor:css('--cur')},
-        {type:'bar', label:label(ly()), data:series(g.k,ly(),m.k+'_wk'), backgroundColor:'rgba(78,161,255,.55)'},
+        {type:'bar', label:label(ly()), data:series(g.k,ly(),m.k+'_wk'), backgroundColor:css('--ly')+'8c'},
         {type:'line', label:H.length+'-yr avg', data:avgSeries(g.k,m.k,'wk'), borderColor:css('--avg'), borderDash:[4,3], pointRadius:0, borderWidth:1.5},
       ]}, options:chartOpts()}));
   } else {
@@ -176,6 +217,14 @@ function renderGrain(g){
         {label:'Terminal', data:series(g.k,D.current,'stk_terminal'), backgroundColor:'#4ea1ff'},
       ]}, options:chartOpts(true)}));
   }
+}
+
+function projRow(g,m){
+  const P = projection(g,m);
+  if (!P) return '';
+  return `<div class="proj" title="Current CYTD ÷ avg share of full-year total done by week ${D.latest_week} in the prior ${P.n} crop years (${(P.avgShare*100).toFixed(0)}%). Range uses each year's share alone.">
+    <span>Seasonal pace → <b>${fmt(P.implied,0)}</b></span><span>${fmt(P.lo,0)}–${fmt(P.hi,0)}</span></div>
+    <div class="r"><span>vs LY final ${pctHtml(pct(P.implied,P.lyFinal))}</span><span>LY final ${fmt(P.lyFinal,0)}</span></div>`;
 }
 
 function fmtChg(a,b){ if(a==null||b==null) return '–'; const d=a-b; return `<span class="${d>=0?'up':'dn'}">${d>=0?'+':''}${fmt(d)}</span>`; }
@@ -233,12 +282,12 @@ function ds(lbl,data,color,dash,width){
   return {label:lbl, data, borderColor:c, backgroundColor:c, borderDash:dash||[], borderWidth:width||1.75, pointRadius:0, tension:.15, spanGaps:true};
 }
 function chartOpts(stacked){
-  const grid={color:'#1c232b'}, tick={color:'#7d8894',font:{family:'ui-monospace,monospace',size:10}};
+  const grid={color:css('--grid')}, tick={color:css('--dim'),font:{family:'ui-monospace,monospace',size:10}};
   return {responsive:true, maintainAspectRatio:false, animation:false, interaction:{mode:'index',intersect:false},
-    plugins:{legend:{labels:{color:'#a9b3bd',boxWidth:10,font:{family:'ui-monospace,monospace',size:11},
+    plugins:{legend:{labels:{color:css('--leg'),boxWidth:10,font:{family:'ui-monospace,monospace',size:11},
       filter:i=>!/^range/.test(i.text)}},
       tooltip:{filter:i=>!/^range/.test(i.dataset.label), callbacks:{title:t=>'Week '+t[0].label, label:c=>`${c.dataset.label}: ${fmt(c.parsed.y)}`}}},
-    scales:{x:{stacked:!!stacked,grid,ticks:{...tick,maxTicksLimit:14},title:{display:true,text:'grain week',color:'#7d8894',font:{size:10}}},
+    scales:{x:{stacked:!!stacked,grid,ticks:{...tick,maxTicksLimit:14},title:{display:true,text:'grain week',color:css('--dim'),font:{size:10}}},
             y:{stacked:!!stacked,grid,ticks:{...tick,callback:v=>v.toLocaleString()}}}};
 }
 function lineChart(id,labels,datasets){ return new Chart(document.getElementById(id),{type:'line',data:{labels,datasets},options:chartOpts()}); }
@@ -249,6 +298,7 @@ function notes(){
   Figures match the GSW Excel Summary tab. Deliveries = primary + process elevator producer deliveries + producer cars.
   Domestic disappearance = process elevator use (canola crush / wheat milled) + terminal and primary shipments to Canadian domestic + producer cars to Canadian processors.
   Exports = terminal exports + direct exports from primary elevators + producer cars to US. Stocks = commercial stocks at primary, process and terminal elevators (excl. condo storage).
+  Seasonal pace (dotted line) = current CYTD ÷ average share of the full-year total completed by this week in the prior crop years, then traced forward along the average seasonal curve; range = same calc using each prior year alone. It's an arithmetic pace projection, not a forecast.
   Wheat excludes durum. History uses CGC's revised crop-year files, so a few early-season weeks differ slightly from the Excel originally published that week; CGC publishes no report for some holiday weeks (gap in weekly bars).</div>`;
 }
 boot();
