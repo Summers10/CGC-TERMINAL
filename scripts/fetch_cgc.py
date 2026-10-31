@@ -2,10 +2,10 @@
 """
 Fetch CGC Grain Statistics Weekly (GSW) crop-year CSVs and build data/cgc.json
 for Canola, Wheat (ex-durum), Amber Durum and All Wheat.
-
+ 
 Runs server-side in GitHub Actions (canada.ca blocks browser CORS).
 Stdlib only.
-
+ 
 Metric definitions (all kt):
   deliveries  = Primary 'Deliveries' (sum of provinces) + Process 'Producer Deliveries'
   domestic    = Process 'Milled/Mfg Grain'  (canola = crush)
@@ -17,36 +17,47 @@ import csv
 import io
 import json
 import os
+import subprocess
 import sys
 import time
-import urllib.request
 from collections import defaultdict
 from datetime import date, datetime, timezone
-
+ 
 BASE = "https://www.canada.ca/content/dam/cgc-ccg/documents/statistiques-statistics/grain-statistics-weekly"
 NAME_PATTERNS = ["grain-stats-weekly-{cy}.csv", "grain-statistics-weekly-{cy}.csv"]
 UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36"
-
+ 
 N_HIST = int(os.environ.get("CGC_HIST_YEARS", "5"))   # prior crop years for LY / 5-yr avg
 OUT = os.environ.get("CGC_OUT", os.path.join(os.path.dirname(__file__), "..", "data", "cgc.json"))
 LOCAL_DIR = os.environ.get("CGC_LOCAL_DIR")             # optional: read CSVs from disk (testing)
-
+ 
 GRAINS = {"Canola": "canola", "Wheat": "wheat", "Amber Durum": "durum"}
 PORTS = ["Vancouver", "Prince Rupert", "Churchill", "Thunder Bay", "Bay & Lakes", "St. Lawrence"]
 PROVS = {"Manitoba": "MB", "Saskatchewan": "SK", "Alberta": "AB", "British Columbia": "BC"}
 STOCK_GROUPS = {"Primary Elevators": "primary", "Process Elevators": "process"}  # rest = terminal
-
-
+ 
+ 
 def crop_year_of(d: date) -> str:
     start = d.year if d.month >= 8 else d.year - 1
     return f"{start}-{start + 1}"
-
-
+ 
+ 
 def prev_cy(cy: str, n: int = 1) -> str:
     s = int(cy[:4]) - n
     return f"{s}-{s + 1}"
-
-
+ 
+ 
+def _curl(url: str):
+    """canada.ca (Akamai) can stall plain python requests from cloud IPs; curl w/ HTTP2 + browser headers is more reliable."""
+    cmd = ["curl", "-sS", "-L", "--http2", "--compressed", "--connect-timeout", "20", "--max-time", "90",
+           "-H", f"User-Agent: {UA}", "-H", "Accept: text/csv,text/plain,*/*;q=0.8",
+           "-H", "Accept-Language: en-CA,en;q=0.9", "-H", "Referer: https://www.canada.ca/en/grain-commission/services/statistics/grain-statistics-weekly.html",
+           "-w", "\n__HTTP__%{http_code}", url]
+    r = subprocess.run(cmd, capture_output=True, timeout=120)
+    body, _, code = r.stdout.rpartition(b"\n__HTTP__")
+    return int(code or 0), body, r.stderr.decode(errors="replace").strip()
+ 
+ 
 def fetch_csv(cy: str):
     if LOCAL_DIR:
         p = os.path.join(LOCAL_DIR, f"{cy}.csv")
@@ -56,42 +67,40 @@ def fetch_csv(cy: str):
         return None
     for pat in NAME_PATTERNS:
         url = f"{BASE}/{cy}/{pat.format(cy=cy)}"
-        for attempt in range(3):
+        for attempt in range(2):
+            t0 = time.time()
             try:
-                req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "text/csv,*/*"})
-                with urllib.request.urlopen(req, timeout=120) as r:
-                    raw = r.read()
+                code, raw, err = _curl(url)
+            except subprocess.TimeoutExpired:
+                code, raw, err = 0, b"", "timeout"
+            print(f"  {cy} {pat.split('-{')[0]}: HTTP {code} {len(raw)/1e6:.1f} MB {time.time()-t0:.0f}s {err}", flush=True)
+            if code == 404:
+                break
+            if code == 200:
                 txt = raw.decode("utf-8-sig", errors="replace")
-                if txt.lstrip().startswith("<"):   # html error page
-                    break
-                print(f"  {cy}: {url} ({len(raw)/1e6:.1f} MB)")
-                return txt
-            except urllib.error.HTTPError as e:
-                if e.code == 404:
-                    break
-                time.sleep(3 * (attempt + 1))
-            except Exception as e:  # noqa: BLE001
-                print(f"  retry {url}: {e}", file=sys.stderr)
-                time.sleep(3 * (attempt + 1))
-    print(f"  {cy}: not found", file=sys.stderr)
+                if not txt.lstrip().startswith("<"):
+                    return txt
+                break
+            time.sleep(5)
+    print(f"  {cy}: not found", file=sys.stderr, flush=True)
     return None
-
-
+ 
+ 
 def norm(h: str) -> str:
     return h.strip().strip('"').lower().replace(" ", "_")
-
-
+ 
+ 
 def num(x) -> float:
     try:
         return float(x)
     except (TypeError, ValueError):
         return 0.0
-
-
+ 
+ 
 def new_bucket():
     return defaultdict(lambda: defaultdict(float))   # key -> week -> value
-
-
+ 
+ 
 def parse_year(txt: str):
     """Return (buckets per grain key, week->date map)."""
     rdr = csv.reader(io.StringIO(txt))
@@ -102,7 +111,7 @@ def parse_year(txt: str):
     if missing:
         raise ValueError(f"CSV missing columns {missing}; header={hdr}")
     g = lambda row, k: row[ix[k]].strip() if ix[k] < len(row) else ""
-
+ 
     data = {k: new_bucket() for k in GRAINS.values()}
     dates = {}
     for row in rdr:
@@ -124,7 +133,7 @@ def parse_year(txt: str):
         cw = per == "Current Week"
         cyp = per == "Crop Year"
         B = data[key]
-
+ 
         if ws == "Primary" and met == "Deliveries":
             if cw:
                 B["del_wk"][wk] += v
@@ -155,15 +164,15 @@ def parse_year(txt: str):
         elif ws == "Terminal Receipts" and met == "Receipts":
             B["rcpt_wk" if cw else "rcpt_cy"][wk] += v
     return data, dates
-
-
+ 
+ 
 def to_arrays(bucket, nweeks):
     out = {}
     for k, wv in bucket.items():
         out[k] = [round(wv[w], 1) if w in wv else None for w in range(1, nweeks + 1)]
     return out
-
-
+ 
+ 
 def iso(d: str):
     for fmt in ("%d/%m/%Y", "%Y-%m-%d", "%m/%d/%Y"):
         try:
@@ -171,8 +180,8 @@ def iso(d: str):
         except ValueError:
             pass
     return d
-
-
+ 
+ 
 def main():
     today = date.today()
     cur = crop_year_of(today)
@@ -189,7 +198,7 @@ def main():
     avail = [cy for cy in years if cy in raw]
     current = avail[0]
     keep = avail[: N_HIST + 1]
-
+ 
     out = {
         "updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "source": "Canadian Grain Commission - Grain Statistics Weekly",
@@ -216,16 +225,17 @@ def main():
             out["grains"][gk][cy] = to_arrays(bucket, nweeks)
         out["dates"][cy] = [iso(dates.get(w, "")) for w in range(1, nweeks + 1)]
         print(f"  parsed {cy}: {nweeks} weeks")
-
+ 
     lw = len(out["dates"][current])
     out["latest_week"] = lw
     out["latest_date"] = out["dates"][current][-1] if lw else None
-
+ 
     os.makedirs(os.path.dirname(os.path.abspath(OUT)), exist_ok=True)
     with open(OUT, "w") as f:
         json.dump(out, f, separators=(",", ":"))
     print(f"Wrote {OUT}: {current} wk {lw} ({out['latest_date']}), {os.path.getsize(OUT)/1e3:.0f} KB")
-
-
+ 
+ 
 if __name__ == "__main__":
     main()
+ 
