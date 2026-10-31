@@ -1,18 +1,20 @@
 name: Update CGC data
-
+ 
 on:
   schedule:
+    # CGC posts GSW Thursdays (afternoon CT); AAFC outlook ~20th of the month; StatsCan S&D a few times a year.
     - cron: "30 22 * * 4"
     - cron: "30 14 * * 5"
+    - cron: "15 21 18-25 * *"
   workflow_dispatch:
-
+ 
 permissions:
   contents: write
-
+ 
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -22,14 +24,19 @@ jobs:
         run: pip install curl_cffi openpyxl
       - name: Fetch CGC Grain Statistics Weekly
         run: python scripts/fetch_cgc.py
+      - name: Fetch Canadian S&D (StatsCan + AAFC)
+        if: always()
+        run: python scripts/fetch_sd.py
       - name: Commit if changed
+        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/cgc.json
+          git add data/
           if git diff --cached --quiet; then
             echo "No changes"
           else
-            git commit -m "CGC GSW update $(date -u +%Y-%m-%d)"
+            git commit -m "Data update $(date -u +%Y-%m-%d)"
             git push
           fi
+ 
