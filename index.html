@@ -38,6 +38,9 @@
   tr.tot td{color:var(--amber)}
   .seg{display:inline-flex;gap:2px}
   .seg button{padding:2px 8px;font-size:11px}
+  #banner div{padding:8px 16px;font-size:12px;letter-spacing:.05em;border-bottom:1px solid var(--line)}
+  .stale{background:#3a0d0d;color:#ff8a8a}
+  .vbad{color:var(--up)} .vwarn{color:var(--amber)}
   .note{color:var(--dim);font-size:11px;margin-top:12px;line-height:1.6}
   .scroll{overflow-x:auto}
   a{color:var(--ly)}
@@ -48,6 +51,7 @@
   <h1>CGC TERMINAL</h1>
   <div class="meta" id="meta">loading…</div>
 </header>
+<div id="banner"></div>
 <nav id="tabs"></nav>
 <main id="app"></main>
 
@@ -87,9 +91,19 @@ function boot(){
     D=j;
     const dt = D.latest_date ? new Date(D.latest_date+'T12:00:00').toLocaleDateString('en-CA',{month:'short',day:'numeric',year:'numeric'}) : '';
     document.getElementById('meta').innerHTML =
-      `CY ${D.current} · WEEK ${D.latest_week} · ending ${dt} · updated ${D.updated.replace('T',' ').slice(0,16)} UTC · <a href="${D.source_url}" target="_blank">CGC GSW</a>`;
+      `CY ${D.current} · WEEK ${D.latest_week} · ending ${dt} · updated ${D.updated.replace('T',' ').slice(0,16)} UTC · ${verifiedTag()} · <a href="${D.source_url}" target="_blank">CGC GSW</a>`;
+    const age = D.latest_date ? Math.floor((Date.now() - new Date(D.latest_date+'T12:00:00'))/864e5) : 999;
+    if (age > 12) document.getElementById('banner').innerHTML =
+      `<div class="stale">⚠ DATA STALE — latest CGC week ended ${dt} (${age} days ago). A newer report should exist; the weekly update has likely failed. Check the repo's Actions tab.</div>`;
     renderTabs(); render();
   }).catch(e=>{ document.getElementById('app').innerHTML = '<p>Could not load data/cgc.json — run the GitHub Action once.</p>'; console.error(e); });
+}
+
+function verifiedTag(){
+  const v = D.verified;
+  if (v && v.week===D.latest_week && v.crop_year===D.current)
+    return `<span class="vbad" title="Latest week matched ${v.cells} figures on the official CGC Excel Summary tab (max diff ${v.max_diff} kt)">✓ VERIFIED vs CGC SUMMARY (${v.cells}/${v.cells})</span>`;
+  return `<span class="vwarn">NOT VERIFIED</span>`;
 }
 
 function renderTabs(){
@@ -235,7 +249,7 @@ function notes(){
   Figures match the GSW Excel Summary tab. Deliveries = primary + process elevator producer deliveries + producer cars.
   Domestic disappearance = process elevator use (canola crush / wheat milled) + terminal and primary shipments to Canadian domestic + producer cars to Canadian processors.
   Exports = terminal exports + direct exports from primary elevators + producer cars to US. Stocks = commercial stocks at primary, process and terminal elevators (excl. condo storage).
-  Wheat excludes durum.</div>`;
+  Wheat excludes durum. History uses CGC's revised crop-year files, so a few early-season weeks differ slightly from the Excel originally published that week; CGC publishes no report for some holiday weeks (gap in weekly bars).</div>`;
 }
 boot();
 </script>
