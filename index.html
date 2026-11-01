@@ -38,7 +38,7 @@ body.light{
 .tbtn.active{background:var(--amber);color:#000}
 .tbtn:hover:not(.active){color:var(--amber)}
 .tbtn.sm{padding:4px 10px;font-size:12px}
-#root{max-width:1280px;margin:0 auto;padding:22px}
+#root{max-width:1360px;margin:0 auto;padding:22px}
 #banner div{padding:9px 20px;font-size:14px;font-weight:700;letter-spacing:.05em;color:var(--red);border-bottom:1px solid var(--red);background:var(--row-latest)}
 .ok{color:var(--green)} .warn{color:var(--amber)}
 .panel{border-bottom:2px solid var(--amber);margin-bottom:20px;overflow:hidden}
@@ -85,6 +85,12 @@ td.dim{color:var(--text3) !important;font-weight:500 !important}
 @media(max-width:960px){.grid2{grid-template-columns:1fr}}
 .chart{position:relative;height:320px}
 .note{color:var(--text3);font-size:12px;margin-top:22px;line-height:1.7}
+.notes{color:var(--text3);font-size:13px;margin:22px 0 0 18px;line-height:1.75}
+.notes b{color:var(--text2)}
+th.pace{color:var(--amber) !important;border-left:2px solid var(--amber) !important;border-bottom:2px solid var(--amber) !important}
+td.pace{border-left:2px solid var(--amber)}
+td.pace.chg{color:var(--amber) !important;font-weight:900 !important}
+td.pace.same{color:var(--text3) !important;font-weight:500 !important}
 a{color:var(--ref-color)}
 #err{padding:40px;text-align:center;color:var(--red);font-size:16px}
 </style>
@@ -108,6 +114,7 @@ a{color:var(--ref-color)}
 const GRAINS = [
   {k:'canola', n:'CANOLA', crush:'CRUSH', fi:'Crush (food & industrial)'},
   {k:'wheat',  n:'WHEAT',  crush:'MILLED', fi:'Food & industrial', sub:'ex-durum'},
+  {k:'oats',   n:'OATS',   crush:'MILLED', fi:'Food & industrial'},
 ];
 const METRICS = [
   {k:'exp', n:'EXPORTS',                flow:true, proj:true},
@@ -129,7 +136,7 @@ const label = cy => cy.slice(2,4)+'/'+cy.slice(7,9);
 const css = v => getComputedStyle(document.body).getPropertyValue(v).trim();
 const fdate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('en-CA',{month:'short',day:'numeric',year:'numeric'}) : '';
 const sdate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('en-CA',{month:'short',day:'numeric'}) : '';
-const ordinal = n => { const s=['th','st','nd','rd'], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); };
+const ordinal = n => { if (n<=0) return 'lowest'; const s=['th','st','nd','rd'], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); };
 
 /* =========================================================== theme + nav */
 function getTheme(){ try{ return localStorage.getItem('cgc-theme')||'dark'; }catch(e){ return 'dark'; } }
@@ -281,13 +288,16 @@ function recentTable(g){
   return `<table class="bal-table"><thead><tr><th>WEEK</th><th>EXPORTS</th><th>DOM. DISAPP.</th><th>${g.crush}</th><th>STOCKS</th><th>DELIVERIES</th><th>TERM. RECEIPTS</th></tr></thead><tbody>${r}</tbody></table>`;
 }
 function cgcNotes(){
-  return `<div class="note">
-  Source: Canadian Grain Commission, Grain Statistics Weekly (licensed facilities). Thousand tonnes. Avg = prior ${hist().length} crop years (${hist().map(label).join(', ')}), aligned by grain week.
-  Figures match the GSW Excel Summary tab. Deliveries = primary + process elevator producer deliveries + producer cars.
-  Domestic disappearance = process elevator use (canola crush / wheat milled) + terminal and primary shipments to Canadian domestic + producer cars to Canadian processors.
-  Exports = terminal exports + direct exports from primary elevators + producer cars to US. Stocks = commercial stocks at primary, process and terminal elevators (excl. condo storage).
-  Seasonal pace = current CYTD ÷ average share of the full-year total completed by this week in the prior crop years; range = same calc using each prior year alone. Arithmetic pace, not a forecast.
-  Wheat excludes durum. History uses CGC's revised crop-year files; CGC publishes no report for some Christmas weeks (wk 21 in several years) — averages interpolate across it.</div>`;
+  return `<ul class="notes">
+  <li><b>Source:</b> CGC Grain Statistics Weekly (licensed facilities), 1000 MT. Numbers match CGC's weekly Excel Summary tab.</li>
+  <li><b>Exports:</b> port terminals + direct from country elevators + producer cars to the US.</li>
+  <li><b>Domestic disappearance:</b> processor use (crush / milling) + shipments to Canadian domestic users.</li>
+  <li><b>Stocks:</b> commercial stocks at country, process and port elevators (not on-farm).</li>
+  <li><b>Deliveries:</b> farmer deliveries to country and process elevators + producer cars.</li>
+  <li><b>vs avg:</b> average of the prior ${hist().length} crop years (${hist().map(label).join(', ')}) at the same grain week.</li>
+  <li><b>Seasonal pace:</b> where the year ends if the rest of it follows the normal seasonal pattern. Range = same calc using each past year on its own. Pace, not a forecast.</li>
+  <li>Wheat excludes durum.</li>
+  </ul>`;
 }
 
 /* =========================================================== chart helpers */
@@ -340,7 +350,7 @@ function renderSD(g){
   const C = S.crops[g.k], Y = C.years, fc = C.forecast_year, P = C.prior;
   const statYears = Object.keys(Y).filter(cy=>Y[cy].src==='StatsCan');
   const estYears  = C.aafc_years.filter(cy=>cy!==fc && Y[cy].src==='AAFC');
-  const cols = [...statYears.slice(-6), ...estYears, fc];
+  const cols = [...statYears.slice(-5), ...estYears, fc];
   const prevCy = cy => { const s=+cy.slice(0,4)-1; return `${s}-${s+1}`; };
 
   const suHist = statYears.map(cy=>Y[cy].su).filter(x=>x!=null);
@@ -348,12 +358,15 @@ function renderSD(g){
   const rankCell = (su, sep) => { const r=rank(su); if (r==null) return `<td${sep?' class="sep"':''}>–</td>`;
     const c = r<=25?'pctile-tight':r>=75?'pctile-loose':'pctile-mid'; return `<td class="${c}${sep?' sep':''}">${ordinal(r)}</td>`; };
 
+  const PS = paceSheet(g, C);
+  const nExtra = PS ? 6 : 4;
   const head = `<tr><th>ITEM</th>${cols.map(cy=>`<th class="${cy===fc?'latest':''}">${label(cy)}${cy===fc?' f':(estYears.includes(cy)?' e':'')}</th>`).join('')}
-    <th class="yoy">YoY Δ</th><th class="prior sep">Prior ${sdate(S.aafc.prior_date)}</th><th class="prior">Chg</th></tr>`;
+    <th class="yoy">YoY Δ</th><th class="prior sep">Prior ${sdate(S.aafc.prior_date)}</th><th class="prior">Chg</th>
+    ${PS?`<th class="pace" title="${label(fc)} AAFC balance sheet with the rows CGC tracks swapped for the CGC weekly seasonal pace">${label(fc)} @ CGC PACE</th><th class="prior">vs f</th>`:''}</tr>`;
 
   let body = '';
   for (const r of SD_ROWS){
-    if (r.sec){ body += `<tr class="row-section"><td colspan="${cols.length+4}">${r.sec}</td></tr>`; continue; }
+    if (r.sec){ body += `<tr class="row-section"><td colspan="${cols.length+nExtra}">${r.sec}</td></tr>`; continue; }
     const name = r.k==='fi' ? g.fi : (r.k==='_rank' ? `S/U Percentile Rank (${suHist.length}yr hist)` : r.n);
     const d = r.d!=null ? r.d : (r.pctv?1:0);
     const show = v => v==null ? '–' : (r.pctv ? fmt(v,1)+'%' : fmt(v,d));
@@ -366,7 +379,16 @@ function renderSD(g){
       cells += `<td class="${cls}">${show(v)}</td>`;
     });
     const cur = Y[fc][r.k], py = Y[prevCy(fc)] ? Y[prevCy(fc)][r.k] : null;
-    let yoy='<td>–</td>', pr='<td class="prior sep">–</td>', ch='<td>–</td>';
+    let yoy='<td>–</td>', pr='<td class="prior sep">–</td>', ch='<td>–</td>', pc='', pd='';
+    if (PS){
+      if (r.k==='_rank'){ const rr=rank(PS.v.su); pc = rr==null?'<td class="pace">–</td>':`<td class="pace ${rr<=25?'pctile-tight':rr>=75?'pctile-loose':'pctile-mid'}">${ordinal(rr)}</td>`; pd='<td>–</td>'; }
+      else {
+        const v = PS.v[r.k], changed = PS.changed.has(r.k);
+        pc = `<td class="pace ${changed?'chg':'same'}">${show(v)}</td>`;
+        const dd = (v!=null && cur!=null) ? v-cur : null;
+        pd = (!changed || dd==null || Math.abs(dd)<(r.pctv?0.05:0.5)) ? '<td class="dim">–</td>' : `<td class="${dd>0?'up':'dn'}">${dd>0?'+':''}${r.pctv?dd.toFixed(1)+'pp':fmt(dd,d)}</td>`;
+      }
+    }
     if (r.k==='_rank'){ pr = P ? rankCell(P.su, true) : pr; }
     else {
       if (cur!=null && py!=null) yoy = r.pctv ? `<td class="${cur-py>=0?'up':'dn'}">${cur-py>=0?'+':''}${(cur-py).toFixed(1)}pp</td>` : pctTd(pct(cur,py));
@@ -377,43 +399,48 @@ function renderSD(g){
         ch = zero ? '<td class="dim">0</td>' : `<td class="${dd>0?'up':'dn'}">${dd>0?'+':''}${r.pctv?dd.toFixed(1)+'pp':fmt(dd,d)}</td>`;
       }
     }
-    body += `<tr class="${r.cls||''}"><td>${name}</td>${cells}${yoy}${pr}${ch}</tr>`;
+    body += `<tr class="${r.cls||''}"><td>${name}</td>${cells}${yoy}${pr}${ch}${pc}${pd}</tr>`;
   }
 
   root.innerHTML = `
   ${panel('CANADA · '+g.n+(g.sub?' ('+g.sub+')':''), `crop year Aug–Jul · 1000 MT · history StatsCan · ${label(fc)} f = AAFC ${sdate(S.aafc.date)}`, '',
       `<div class="tbl-wrap"><table class="bal-table"><thead>${head}</thead><tbody>${body}</tbody></table></div>`)}
-  ${paceVsAafc(g, C)}
   ${S.checks.notes && S.checks.notes.length ? `<div class="note">Data notes: ${S.checks.notes.join(' · ')}</div>` : ''}
-  <div class="note">
-    History = Statistics Canada table 32-10-0013 (supply &amp; disposition, final) and 32-10-0359 (harvested area, yield) — revised actuals back to 1996-97.
-    ${label(fc)} f = AAFC "Canada: Outlook for Principal Field Crops" (${fdate(S.aafc.date)}); Prior / Chg = vs the previous AAFC report (${fdate(S.aafc.prior_date)}).
-    ${estYears.length?'e = AAFC estimate for a year StatsCan hasn\'t finalised yet. ':''}
-    Exports: canola = seed only; wheat includes grain products (AAFC/StatsCan definitions). Canola food &amp; industrial is essentially crush. Seed &amp; other = seed use + loss in handling.
-    Cell colours compare each year with the one before. S/U percentile ranks stocks-to-use against every StatsCan year since 1996-97 (low = tight = red). AAFC price: canola = AAFC crop-year average; wheat = No. 1 CWRS 13.5% Sask. producer spot.
-  </div>`;
+  <ul class="notes">
+    <li><b>${cols.slice(0,-1).filter(cy=>!estYears.includes(cy)).map(label).join(', ')}:</b> StatsCan final numbers (official, revised).</li>
+    <li><b>${label(fc)} f:</b> AAFC forecast, ${fdate(S.aafc.date)} report.${estYears.length?` <b>e</b> = AAFC estimate until StatsCan finalises that year.`:''}</li>
+    <li><b>Prior / Chg:</b> AAFC's ${label(fc)} forecast in its previous report (${fdate(S.aafc.prior_date)}) and how much it changed.</li>
+    ${PS?`<li><b>@ CGC pace:</b> AAFC's ${label(fc)} sheet with ${PS.what} replaced by the CGC weekly seasonal pace (week ${D.latest_week}), adjusted to StatsCan's basis using last year's StatsCan÷CGC ratio. Amber = changed rows; ending stocks and S/U fall out of the math.${PS.caveat?' '+PS.caveat:''}</li>`:''}
+    <li><b>S/U percentile:</b> rank vs every StatsCan year since 1996-97. Low = tight (red), high = loose (green).</li>
+    <li><b>Colours</b> in past years: green = up / red = down vs the year before.</li>
+    <li><b>Definitions:</b> ${g.k==='canola'?'canola exports = seed only; food &amp; industrial ≈ crush.':g.k==='oats'?'oat exports include oat products (~⅓ of the total), which CGC doesn\'t track.':'wheat excludes durum; exports include flour/products.'} Seed &amp; other = seed + handling loss.</li>
+  </ul>`;
 }
 
-/* AAFC forecast vs CGC weekly pace (same crop year only) */
-function paceVsAafc(g, C){
-  if (!D) return '';
-  const fc = C.forecast_year;
-  if (fc !== D.current) return '';
-  const Y = C.years, lyCy = D.years[1];
-  const rows = [{m:'exp', n:'Exports', a:Y[fc].exp, lyStc: Y[lyCy] && Y[lyCy].exp}];
-  if (g.k==='canola') rows.push({m:'crush', n:'Crush vs AAFC F&I', a:Y[fc].fi, lyStc: Y[lyCy] && Y[lyCy].fi});
-  const body = rows.map(r=>{
-    const P = projection(g.k, r.m); if (!P || !r.a) return '';
-    const lyCgc = finalOf(g.k, lyCy, r.m), ratio = (lyCgc && r.lyStc) ? r.lyStc/lyCgc : null;
-    const adj = ratio ? P.implied*ratio : null, diff = adj!=null ? adj - r.a : null;
-    return `<tr><td>${r.n}</td><td class="latest">${fmt(r.a,0)}</td><td>${fmt(P.cur,0)}</td><td>${fmt(P.cur/r.a*100,1)}%</td><td>${fmt(P.avgShare*100,1)}%</td>
-      <td>${fmt(P.implied,0)}</td><td class="prior" title="${label(lyCy)}: StatsCan ${fmt(r.lyStc,0)} ÷ CGC ${fmt(lyCgc,0)}">${ratio?ratio.toFixed(3):'–'}</td>
-      <td class="latest">${fmt(adj,0)}</td>${diff==null?'<td>–</td>':`<td class="${diff>=0?'up':'dn'}">${diff>=0?'+':''}${fmt(diff,0)}</td>`}</tr>`;
-  }).join('');
-  return panel('AAFC FORECAST vs CGC WEEKLY PACE', `${label(fc)} · CGC week ${D.latest_week} · 1000 MT`, '',
-    `<div class="tbl-wrap"><table class="bal-table"><thead><tr><th>ITEM</th><th class="latest">AAFC ${label(fc)} F</th><th>CGC CYTD</th><th>% OF AAFC</th><th>NORMAL % BY WK ${D.latest_week}</th>
-      <th>PACE (CGC)</th><th class="prior">LY STC÷CGC</th><th class="latest">PACE (STC BASIS)</th><th class="yoy">vs AAFC</th></tr></thead><tbody>${body}</tbody></table></div>
-     <div class="note" style="margin:10px 2px 4px">Pace = CGC CYTD ÷ normal share of the year done by this week (prior ${hist().length} yrs). CGC counts licensed facilities only, so pace is rescaled by last year's StatsCan÷CGC ratio to put it on the same basis as AAFC before comparing.</div>`);
+/* AAFC forecast sheet re-run with CGC weekly pace for the rows CGC actually measures */
+function paceSheet(g, C){
+  if (!D || !D.grains[g.k]) return null;
+  const fc = C.forecast_year, Y = C.years;
+  if (fc !== D.current || !Y[fc]) return null;
+  const lyCy = D.years[1], A = Y[fc], LY = Y[lyCy];
+  if (!LY) return null;
+  const onStc = (m, stcLy) => {          // CGC pace rescaled to StatsCan basis via last year's ratio
+    const P = projection(g.k, m), cgcLy = finalOf(g.k, lyCy, m);
+    return (P && cgcLy && stcLy) ? P.implied * stcLy / cgcLy : null;
+  };
+  const v = Object.assign({}, A), changed = new Set();
+  const exp = onStc('exp', LY.exp);
+  if (exp == null) return null;
+  v.exp = exp; changed.add('exp');
+  let what = 'exports';
+  if (g.k === 'canola'){
+    const fi = onStc('crush', LY.fi);
+    if (fi != null){ v.fi = fi; v.dom = A.dom - A.fi + fi; changed.add('fi'); changed.add('dom'); what = 'exports and crush'; }
+  }
+  v.total_use = v.exp + v.dom; v.end = v.supply - v.total_use; v.su = v.end / v.total_use * 100;
+  ['total_use','end','su'].forEach(k=>changed.add(k));
+  const caveat = g.k==='oats' ? 'Oat exports include products CGC doesn\'t see, so treat oat pace as rough.' : '';
+  return {v, changed, what, caveat};
 }
 </script>
 </body>
