@@ -26,7 +26,8 @@ body.light{
   --th-bg:#F2F3F6;--section-bg:#ECEDF0;--row-alt:#F7F8FA;--row-latest:#FFF3DC;--grp-line:#9AA1AD;--ref-color:#5b6f94;--ref-bg:rgba(91,111,148,.07);
   --grid:#E0E2E8;--band:rgba(107,114,128,.10);
 }
-#page-tabs{display:flex;align-items:center;border-bottom:2px solid var(--amber);background:var(--bg);padding-left:16px;gap:6px;flex-wrap:wrap}
+#page-tabs{display:flex;align-items:center;border-bottom:2px solid var(--amber);background:var(--bg);padding:0 16px 0 6px;gap:6px;flex-wrap:wrap}
+#theme-toggle{margin-left:auto}
 .page-tab{flex:0 0 auto;padding:10px 22px;background:none;border:none;color:var(--text3);cursor:pointer;font-family:inherit;font-size:14px;font-weight:900;letter-spacing:.08em}
 .page-tab.active{color:var(--amber)}
 .page-tab:hover:not(.active){color:var(--text2)}
@@ -70,12 +71,9 @@ td.up,span.up{color:var(--green) !important}
 td.dn,span.dn{color:var(--red) !important}
 td.dim{color:var(--text3) !important;font-weight:500 !important}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:20px}
-.kpi{background:var(--bg1);border:1px solid var(--border2);border-top:3px solid var(--amber);padding:11px 14px}
-.kpi.on{border-top-color:var(--amber);background:var(--row-latest)}
-.kpi:hover:not(.on){border-top-color:var(--text3)}
+.kpi{background:var(--bg1);border:1px solid var(--border2);border-top:3px solid var(--amber);padding:11px 14px;cursor:default}
 .kpi .t{color:var(--text3);font-size:12px;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
 .kpi .v{font-size:27px;font-weight:900;color:var(--amber);margin:5px 0 4px}
-.kpi.on .v{color:var(--amber)}
 .kpi .v small{font-size:13px;color:var(--text3);font-weight:600}
 .kpi .r{display:flex;justify-content:space-between;font-size:13px;color:var(--text2);margin-top:2px}
 .kpi .proj{margin-top:7px;padding-top:7px;border-top:1px dashed var(--border2);font-size:13px;color:var(--text2);display:flex;justify-content:space-between}
@@ -87,19 +85,23 @@ td.dim{color:var(--text3) !important;font-weight:500 !important}
 .note{color:var(--text3);font-size:12px;margin-top:22px;line-height:1.7}
 .notes{color:var(--text3);font-size:13px;margin:22px 0 0 18px;line-height:1.75}
 .notes b{color:var(--text2)}
-th.pace{color:var(--amber) !important;border-left:2px solid var(--amber) !important;border-bottom:2px solid var(--amber) !important}
-td.pace{border-left:2px solid var(--amber)}
-td.pace.chg{color:var(--amber) !important;font-weight:900 !important}
-td.pace.same{color:var(--text3) !important;font-weight:500 !important}
+/* pace block: detached from the main table, tinted blue-grey */
+.bal-table th.gap,.bal-table td.gap{background:var(--bg) !important;border:none !important;padding:0;width:18px;min-width:18px}
+.bal-table th.pc{background:var(--ref-bg);color:var(--ref-color) !important;border-bottom:2px solid var(--ref-color);border-left:1px solid var(--border2);font-style:italic}
+.bal-table td.pc{background:var(--ref-bg) !important;color:var(--ref-color) !important;border-left:1px solid var(--border2);opacity:.9}
+.bal-table td.pc.chg{font-weight:900 !important;opacity:1}
+.bal-table td.pc.same{opacity:.45;font-weight:500 !important}
+.bal-table td.pc.up{color:var(--green) !important} .bal-table td.pc.dn{color:var(--red) !important}
+tr.row-section td.gap{border-top:none !important}
 a{color:var(--ref-color)}
 #err{padding:40px;text-align:center;color:var(--red);font-size:16px}
 </style>
 </head>
-<body class="dark">
+<body class="light">
 <div id="page-tabs">
-  <div class="toggle" id="theme-toggle"><button class="tbtn sm" data-t="dark">Dark</button><button class="tbtn sm" data-t="light">Light</button></div>
   <button class="page-tab active" data-page="cgc">CGC WEEKLY</button>
   <button class="page-tab" data-page="sd">S&amp;D BALANCE SHEET</button>
+  <div class="toggle" id="theme-toggle"><button class="tbtn sm" data-t="dark">Dark</button><button class="tbtn sm" data-t="light">Light</button></div>
 </div>
 <div id="topbar">
   <h1 id="title">CGC Grain Statistics</h1>
@@ -139,7 +141,7 @@ const sdate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('en-CA',{month
 const ordinal = n => { if (n<=0) return 'lowest'; const s=['th','st','nd','rd'], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); };
 
 /* =========================================================== theme + nav */
-function getTheme(){ try{ return localStorage.getItem('cgc-theme')||'dark'; }catch(e){ return 'dark'; } }
+function getTheme(){ try{ return localStorage.getItem('cgc-theme')||'light'; }catch(e){ return 'light'; } }
 function setTheme(t){
   document.body.classList.toggle('dark', t==='dark'); document.body.classList.toggle('light', t==='light');
   document.querySelectorAll('#theme-toggle .tbtn').forEach(b=>b.classList.toggle('active', b.dataset.t===t));
@@ -359,14 +361,14 @@ function renderSD(g){
     const c = r<=25?'pctile-tight':r>=75?'pctile-loose':'pctile-mid'; return `<td class="${c}${sep?' sep':''}">${ordinal(r)}</td>`; };
 
   const PS = paceSheet(g, C);
-  const nExtra = PS ? 6 : 4;
+  const nExtra = 4;
   const head = `<tr><th>ITEM</th>${cols.map(cy=>`<th class="${cy===fc?'latest':''}">${label(cy)}${cy===fc?' f':(estYears.includes(cy)?' e':'')}</th>`).join('')}
     <th class="yoy">YoY Δ</th><th class="prior sep">Prior ${sdate(S.aafc.prior_date)}</th><th class="prior">Chg</th>
-    ${PS?`<th class="pace" title="${label(fc)} AAFC balance sheet with the rows CGC tracks swapped for the CGC weekly seasonal pace">${label(fc)} @ CGC PACE</th><th class="prior">vs f</th>`:''}</tr>`;
+    ${PS?`<th class="gap"></th><th class="pc" title="${label(fc)} AAFC balance sheet with the rows CGC tracks swapped for the CGC weekly seasonal pace">${label(fc)} @ CGC PACE</th><th class="pc">vs f</th>`:''}</tr>`;
 
   let body = '';
   for (const r of SD_ROWS){
-    if (r.sec){ body += `<tr class="row-section"><td colspan="${cols.length+nExtra}">${r.sec}</td></tr>`; continue; }
+    if (r.sec){ body += `<tr class="row-section"><td colspan="${cols.length+nExtra}">${r.sec}</td>${PS?'<td class="gap"></td><td class="pc same" colspan="2"></td>':''}</tr>`; continue; }
     const name = r.k==='fi' ? g.fi : (r.k==='_rank' ? `S/U Percentile Rank (${suHist.length}yr hist)` : r.n);
     const d = r.d!=null ? r.d : (r.pctv?1:0);
     const show = v => v==null ? '–' : (r.pctv ? fmt(v,1)+'%' : fmt(v,d));
@@ -381,12 +383,12 @@ function renderSD(g){
     const cur = Y[fc][r.k], py = Y[prevCy(fc)] ? Y[prevCy(fc)][r.k] : null;
     let yoy='<td>–</td>', pr='<td class="prior sep">–</td>', ch='<td>–</td>', pc='', pd='';
     if (PS){
-      if (r.k==='_rank'){ const rr=rank(PS.v.su); pc = rr==null?'<td class="pace">–</td>':`<td class="pace ${rr<=25?'pctile-tight':rr>=75?'pctile-loose':'pctile-mid'}">${ordinal(rr)}</td>`; pd='<td>–</td>'; }
+      if (r.k==='_rank'){ const rr=rank(PS.v.su); pc = `<td class="gap"></td><td class="pc chg">${rr==null?'–':ordinal(rr)}</td>`; pd='<td class="pc same">–</td>'; }
       else {
         const v = PS.v[r.k], changed = PS.changed.has(r.k);
-        pc = `<td class="pace ${changed?'chg':'same'}">${show(v)}</td>`;
+        pc = `<td class="gap"></td><td class="pc ${changed?'chg':'same'}">${show(v)}</td>`;
         const dd = (v!=null && cur!=null) ? v-cur : null;
-        pd = (!changed || dd==null || Math.abs(dd)<(r.pctv?0.05:0.5)) ? '<td class="dim">–</td>' : `<td class="${dd>0?'up':'dn'}">${dd>0?'+':''}${r.pctv?dd.toFixed(1)+'pp':fmt(dd,d)}</td>`;
+        pd = (!changed || dd==null || Math.abs(dd)<(r.pctv?0.05:0.5)) ? '<td class="pc same">–</td>' : `<td class="pc chg">${dd>0?'+':''}${r.pctv?dd.toFixed(1)+'pp':fmt(dd,d)}</td>`;
       }
     }
     if (r.k==='_rank'){ pr = P ? rankCell(P.su, true) : pr; }
@@ -410,7 +412,7 @@ function renderSD(g){
     <li><b>${cols.slice(0,-1).filter(cy=>!estYears.includes(cy)).map(label).join(', ')}:</b> StatsCan final numbers (official, revised).</li>
     <li><b>${label(fc)} f:</b> AAFC forecast, ${fdate(S.aafc.date)} report.${estYears.length?` <b>e</b> = AAFC estimate until StatsCan finalises that year.`:''}</li>
     <li><b>Prior / Chg:</b> AAFC's ${label(fc)} forecast in its previous report (${fdate(S.aafc.prior_date)}) and how much it changed.</li>
-    ${PS?`<li><b>@ CGC pace:</b> AAFC's ${label(fc)} sheet with ${PS.what} replaced by the CGC weekly seasonal pace (week ${D.latest_week}), adjusted to StatsCan's basis using last year's StatsCan÷CGC ratio. Amber = changed rows; ending stocks and S/U fall out of the math.${PS.caveat?' '+PS.caveat:''}</li>`:''}
+    ${PS?`<li><b>@ CGC pace:</b> AAFC's ${label(fc)} sheet with ${PS.what} replaced by the CGC weekly seasonal pace (week ${D.latest_week}), adjusted to StatsCan's basis using last year's StatsCan÷CGC ratio. Bold = rows that changed; faded = carried over from AAFC unchanged.${PS.caveat?' '+PS.caveat:''}</li>`:''}
     <li><b>S/U percentile:</b> rank vs every StatsCan year since 1996-97. Low = tight (red), high = loose (green).</li>
     <li><b>Colours</b> in past years: green = up / red = down vs the year before.</li>
     <li><b>Definitions:</b> ${g.k==='canola'?'canola exports = seed only; food &amp; industrial ≈ crush.':g.k==='oats'?'oat exports include oat products (~⅓ of the total), which CGC doesn\'t track.':'wheat excludes durum; exports include flour/products.'} Seed &amp; other = seed + handling loss.</li>
