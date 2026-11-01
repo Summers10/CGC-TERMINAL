@@ -1,55 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>USDA Balance Sheets</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CGC Terminal · Canola & Wheat</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{height:100%}
 body{
   font-family:'Courier New',Courier,monospace;font-size:17px;font-weight:500;min-height:100%;
   background:var(--bg);color:var(--text);font-variant-numeric:tabular-nums;
-  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
-  transition:background .15s,color .15s;
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;transition:background .15s,color .15s;
 }
 body.dark{
   --bg:#000;--bg1:#060606;--bg2:#0a0a0a;--border:#141414;--border2:#1e1e1e;
   --text:#d4b896;--text2:#8a7a68;--text3:#6a5a4a;
   --amber:#f5a623;--green:#2e8f52;--red:#b83838;
   --th-bg:#040404;--section-bg:#050505;--row-alt:#030303;--row-latest:#0c0800;--grp-line:#4a4034;--ref-color:#8496bd;--ref-bg:rgba(132,150,189,.07);
+  --grid:#141414;--band:rgba(212,184,150,.07);
 }
 body.light{
   --bg:#FFFFFF;--bg1:#F7F8FA;--bg2:#F0F1F4;--border:#E0E2E8;--border2:#C8CCD4;
   --text:#1A1D24;--text2:#3A3F4A;--text3:#6B7280;
   --amber:#B8720A;--green:#0E7A3A;--red:#C4302B;
   --th-bg:#F2F3F6;--section-bg:#ECEDF0;--row-alt:#F7F8FA;--row-latest:#FFF3DC;--grp-line:#9AA1AD;--ref-color:#5b6f94;--ref-bg:rgba(91,111,148,.07);
+  --grid:#E0E2E8;--band:rgba(107,114,128,.10);
 }
+#page-tabs{display:flex;align-items:center;border-bottom:2px solid var(--amber);background:var(--bg);padding:0 16px 0 6px;gap:6px;flex-wrap:wrap}
+#theme-toggle{margin-left:auto}
+.page-tab{flex:0 0 auto;padding:10px 22px;background:none;border:none;color:var(--text3);cursor:pointer;font-family:inherit;font-size:14px;font-weight:900;letter-spacing:.08em}
+.page-tab.active{color:var(--amber)}
+.page-tab:hover:not(.active){color:var(--text2)}
 #topbar{position:sticky;top:0;z-index:10;padding:14px 20px;border-bottom:1px solid var(--amber);background:var(--bg);display:flex;align-items:center;gap:20px;flex-wrap:wrap}
 #topbar h1{font-size:18px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);white-space:nowrap}
-#conv-label{font-size:12px;color:var(--text3);letter-spacing:.04em;white-space:nowrap}
-#meta{font-size:13px;color:var(--text3);letter-spacing:.04em;margin-left:auto}
+#meta{font-size:13px;color:var(--text3);letter-spacing:.04em;margin-left:auto;text-align:right;line-height:1.5}
 .toggle{display:flex;border:1px solid var(--border2);border-radius:3px;overflow:hidden}
 .tbtn{padding:7px 15px;background:none;border:none;color:var(--text3);cursor:pointer;font-family:inherit;font-size:14px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;transition:all .1s}
 .tbtn.active{background:var(--amber);color:#000}
 .tbtn:hover:not(.active){color:var(--amber)}
-#root{max-width:1280px;margin:0 auto;padding:22px}
-.sec-hdr{font-size:15px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:var(--amber);padding:16px 0 9px;border-bottom:2px solid var(--amber);margin:32px 0 14px}
-.sec-hdr:first-child{margin-top:0}
+.tbtn.sm{padding:4px 10px;font-size:12px}
+#root{max-width:1360px;margin:0 auto;padding:22px}
+#banner div{padding:9px 20px;font-size:14px;font-weight:700;letter-spacing:.05em;color:var(--red);border-bottom:1px solid var(--red);background:var(--row-latest)}
+.ok{color:var(--green)} .warn{color:var(--amber)}
 .panel{border-bottom:2px solid var(--amber);margin-bottom:20px;overflow:hidden}
-.panel-hdr{padding:9px 16px;background:var(--bg1);border:1px solid var(--border);border-bottom:none;border-top:3px solid var(--amber)}
+.panel-hdr{padding:9px 16px;background:var(--bg1);border:1px solid var(--border);border-bottom:none;border-top:3px solid var(--amber);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .panel-title{font-size:16px;font-weight:900;letter-spacing:.09em;text-transform:uppercase;color:var(--amber)}
-.panel-sub{font-size:13px;color:var(--text3);letter-spacing:.05em;margin-left:8px}
+.panel-sub{font-size:13px;color:var(--text3);letter-spacing:.05em}
+.panel-hdr .right{margin-left:auto}
+.panel-body{border:1px solid var(--border2);background:var(--bg);padding:12px 14px}
 .tbl-wrap{overflow-x:auto}
 .bal-table{width:100%;border-collapse:collapse;border:1px solid var(--border2);background:var(--bg)}
 .bal-table th{background:var(--th-bg);padding:8px 8px;text-align:right;font-size:14px;font-weight:800;letter-spacing:.05em;color:var(--text2);border-bottom:2px solid var(--border2);white-space:nowrap}
 .bal-table th:first-child{text-align:left;font-size:14px;letter-spacing:.08em}
 .bal-table th.latest{color:var(--amber);font-weight:900;border-bottom:2px solid var(--amber)}
-.bal-table th.yoy{color:var(--text3);font-style:italic}
+.bal-table th.yoy,.bal-table th.prior{color:var(--text3);font-style:italic}
+.bal-table th.sep,.bal-table td.sep{border-left:2px solid var(--border2)}
 .bal-table td{padding:5px 8px;text-align:right;font-size:15px;font-weight:600;border-bottom:1px solid var(--border);color:var(--text2);white-space:nowrap;background:var(--bg)}
 .bal-table td:first-child{text-align:left;color:var(--text);font-weight:700}
 td.latest{color:var(--amber) !important;font-weight:800 !important}
 .row-section td{background:var(--section-bg);color:var(--text3) !important;font-size:12px !important;font-weight:900;letter-spacing:.12em;text-transform:uppercase;padding:5px 10px 4px;border-top:1px solid var(--border2)}
-.row-alt td{background:var(--row-alt) !important}
 .row-total td{font-weight:800;font-size:16px !important;color:var(--amber) !important}
 .row-ending td{font-weight:900;font-size:16px !important;color:var(--text) !important;background:var(--row-latest) !important}
 .row-stu td{font-style:italic;color:var(--amber) !important;font-size:15px !important}
@@ -58,2427 +67,378 @@ td.pctile-tight{color:var(--red) !important;font-weight:800 !important}
 td.pctile-loose{color:var(--green) !important;font-weight:800 !important}
 td.pctile-mid{color:var(--text3) !important}
 td.prior{color:var(--text3)}
-td.up{color:var(--green) !important}
-td.dn{color:var(--red) !important}
-.stack-wrap{display:flex;flex-direction:column;gap:0}
+td.up,span.up{color:var(--green) !important}
+td.dn,span.dn{color:var(--red) !important}
+td.dim{color:var(--text3) !important;font-weight:500 !important}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:20px}
+.kpi{background:var(--bg1);border:1px solid var(--border2);border-top:3px solid var(--amber);padding:11px 14px;cursor:default}
+.kpi .t{color:var(--text3);font-size:12px;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
+.kpi .v{font-size:27px;font-weight:900;color:var(--amber);margin:5px 0 4px}
+.kpi .v small{font-size:13px;color:var(--text3);font-weight:600}
+.kpi .r{display:flex;justify-content:space-between;font-size:13px;color:var(--text2);margin-top:2px}
+.kpi .proj{margin-top:7px;padding-top:7px;border-top:1px dashed var(--border2);font-size:13px;color:var(--text2);display:flex;justify-content:space-between}
+.kpi .proj b{color:var(--amber);font-weight:900}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.grid2 .panel{margin-bottom:0}
+@media(max-width:960px){.grid2{grid-template-columns:1fr}}
+.chart{position:relative;height:320px}
+.note{color:var(--text3);font-size:12px;margin-top:22px;line-height:1.7}
+.notes{color:var(--text3);font-size:13px;margin:22px 0 0 18px;line-height:1.75}
+.notes b{color:var(--text2)}
+/* pace block: detached from the main table, tinted blue-grey */
+.bal-table th.gap,.bal-table td.gap{background:var(--bg) !important;border:none !important;padding:0;width:18px;min-width:18px}
+.bal-table th.pc{background:var(--ref-bg);color:var(--ref-color) !important;border-bottom:2px solid var(--ref-color);border-left:1px solid var(--border2);font-style:italic}
+.bal-table td.pc{background:var(--ref-bg) !important;color:var(--ref-color) !important;border-left:1px solid var(--border2);opacity:.9}
+.bal-table td.pc.chg{font-weight:900 !important;opacity:1}
+.bal-table td.pc.same{opacity:.45;font-weight:500 !important}
+.bal-table td.pc.up{color:var(--green) !important} .bal-table td.pc.dn{color:var(--red) !important}
+tr.row-section td.gap{border-top:none !important}
+a{color:var(--ref-color)}
 #err{padding:40px;text-align:center;color:var(--red);font-size:16px}
 </style>
 </head>
 <body class="light">
-<div id="pw-gate" style="position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:99999;display:flex;align-items:center;justify-content:center;flex-direction:column">
-  <div style="text-align:center">
-    <div style="font-size:20px;font-weight:900;letter-spacing:.14em;color:#f5a623;margin-bottom:20px">SPEISS/SUMMERS</div>
-    <input id="pw-input" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')checkPw()"
-      style="background:#111;border:1px solid #333;color:#f5a623;font-family:'Courier New',Courier,monospace;font-size:16px;padding:10px 16px;width:240px;text-align:center;letter-spacing:.1em;outline:none;border-radius:3px">
-    <br><button onclick="checkPw()" style="margin-top:12px;background:#f5a623;border:none;color:#000;font-family:'Courier New',Courier,monospace;font-size:13px;font-weight:700;padding:8px 24px;cursor:pointer;letter-spacing:.1em;border-radius:3px">ENTER</button>
-    <div id="pw-err" style="color:#b83838;font-size:12px;margin-top:10px;height:16px"></div>
-  </div>
+<div id="page-tabs">
+  <button class="page-tab active" data-page="cgc">CGC WEEKLY</button>
+  <button class="page-tab" data-page="sd">S&amp;D BALANCE SHEET</button>
+  <div class="toggle" id="theme-toggle"><button class="tbtn sm" data-t="dark">Dark</button><button class="tbtn sm" data-t="light">Light</button></div>
 </div>
-<script>
-function checkPw(){
-  var p = document.getElementById('pw-input').value;
-  if(p === 'Plamoil'){
-    document.getElementById('pw-gate').style.display = 'none';
-    sessionStorage.setItem('pw-ok', '1');
-  } else {
-    document.getElementById('pw-err').textContent = 'Invalid password';
-  }
-}
-if(sessionStorage.getItem('pw-ok') === '1') document.getElementById('pw-gate').style.display = 'none';
-</script>
-<div id="page-tabs" style="display:flex;align-items:center;border-bottom:2px solid #f5a623;background:#000">
-  <button class="page-tab active" data-page="summary" style="flex:0 0 auto;padding:10px 22px;background:none;border:none;color:#f5a623;cursor:pointer;font-family:'Courier New',Courier,monospace;font-size:14px;font-weight:900;letter-spacing:.08em">SUMMARY</button>
-  <button class="page-tab" data-page="usda" style="flex:0 0 auto;padding:10px 22px;background:none;border:none;color:#6a5a4a;cursor:pointer;font-family:'Courier New',Courier,monospace;font-size:14px;font-weight:900;letter-spacing:.08em">USDA REPORT</button>
-  <button class="page-tab" data-page="cftc" style="flex:0 0 auto;padding:10px 22px;background:none;border:none;color:#6a5a4a;cursor:pointer;font-family:'Courier New',Courier,monospace;font-size:14px;font-weight:900;letter-spacing:.08em">CFTC REPORT</button>
-  <button class="page-tab" data-page="seasonals" style="flex:0 0 auto;padding:10px 22px;background:none;border:none;color:#6a5a4a;cursor:pointer;font-family:'Courier New',Courier,monospace;font-size:14px;font-weight:900;letter-spacing:.08em">SEASONALS</button>
-  <button class="page-tab" data-page="exports" style="flex:0 0 auto;padding:10px 22px;background:none;border:none;color:#6a5a4a;cursor:pointer;font-family:'Courier New',Courier,monospace;font-size:14px;font-weight:900;letter-spacing:.08em">EXPORTS</button>
-  <button class="page-tab" data-page="weather" style="flex:0 0 auto;padding:10px 22px;background:none;border:none;color:#6a5a4a;cursor:pointer;font-family:'Courier New',Courier,monospace;font-size:14px;font-weight:900;letter-spacing:.08em">WEATHER</button>
-  <div style="margin-left:auto;padding-right:16px;display:flex;border:1px solid #1e1e1e;border-radius:3px;overflow:hidden">
-    <button class="global-theme-btn" data-t="dark" style="padding:7px 15px;background:none;border:none;color:#6a5a4a;cursor:pointer;font-family:'Courier New',Courier,monospace;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase">Dark</button>
-    <button class="global-theme-btn" data-t="light" style="padding:7px 15px;background:#f5a623;border:none;color:#000;cursor:pointer;font-family:'Courier New',Courier,monospace;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase">Light</button>
-  </div>
-</div>
-<script>
-function setGlobalTheme(theme){
-  document.body.classList.toggle('dark', theme==='dark');
-  document.body.classList.toggle('light', theme==='light');
-  document.querySelectorAll('.global-theme-btn').forEach(function(b){
-    const active = b.dataset.t === theme;
-    b.style.background = active ? '#f5a623' : 'none';
-    b.style.color = active ? '#000' : '#6a5a4a';
-  });
-  const usdaToggle = document.getElementById('theme-toggle');
-  if(usdaToggle){
-    usdaToggle.querySelectorAll('.tbtn').forEach(function(b){ b.classList.toggle('active', b.dataset.t===theme); });
-  }
-  if(typeof currentTheme !== 'undefined') currentTheme = theme;
-}
-document.querySelectorAll('.global-theme-btn').forEach(function(b){
-  b.addEventListener('click', function(){ setGlobalTheme(b.dataset.t); });
-});
-document.querySelectorAll('.page-tab').forEach(function(btn){
-  btn.addEventListener('click', function(){
-    document.querySelectorAll('.page-tab').forEach(function(b){ b.classList.remove('active'); b.style.color = '#6a5a4a'; });
-    btn.classList.add('active'); btn.style.color = '#f5a623';
-    document.getElementById('summary-page').style.display = btn.dataset.page === 'summary' ? '' : 'none';
-    document.getElementById('usda-page').style.display = btn.dataset.page === 'usda' ? '' : 'none';
-    document.getElementById('cftc-page').style.display = btn.dataset.page === 'cftc' ? '' : 'none';
-    document.getElementById('seasonals-page').style.display = btn.dataset.page === 'seasonals' ? '' : 'none';
-    document.getElementById('exports-page').style.display = btn.dataset.page === 'exports' ? '' : 'none';
-    document.getElementById('weather-page').style.display = btn.dataset.page === 'weather' ? '' : 'none';
-    if(btn.dataset.page === 'cftc' && typeof fitCftcTable === 'function') fitCftcTable();   // size the columns once the page is visible
-  });
-});
-</script>
-<div id="summary-page">
-<div id="summary-topbar" style="padding:14px 20px;border-bottom:1px solid var(--amber);background:var(--bg);display:flex;align-items:center;gap:20px">
-  <h1 style="font-size:18px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);white-space:nowrap">Summary</h1>
-  <div id="summary-meta" style="font-size:13px;color:var(--text3);letter-spacing:.04em;margin-left:auto">Loading...</div>
-</div>
-  <div id="summary-root" style="max-width:1300px;margin:0 auto;padding:22px"></div>
-</div>
-<div id="usda-page" style="display:none">
 <div id="topbar">
-  <h1>USDA Balance Sheets</h1>
-  <div class="toggle" id="comm-toggle"></div>
-  <div class="toggle" id="unit-toggle">
-    <button class="tbtn" data-u="mt">MT</button>
-    <button class="tbtn" data-u="bu">BU</button>
-  </div>
-  <div id="conv-label"></div>
-  <div id="meta">Loading...</div>
+  <h1 id="title">CGC Grain Statistics</h1>
+  <div class="toggle" id="grain-toggle"></div>
+  <div id="meta">loading…</div>
 </div>
+<div id="banner"></div>
 <div id="root"></div>
-</div>
-<div id="cftc-page" style="display:none">
-<div id="cftc-topbar" style="padding:14px 20px;border-bottom:1px solid var(--amber);background:var(--bg);display:flex;align-items:center;gap:20px">
-  <h1 style="font-size:18px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);white-space:nowrap">CFTC Commitment of Traders</h1>
-  <div id="cftc-meta" style="font-size:13px;color:var(--text3);letter-spacing:.04em;margin-left:auto">Loading...</div>
-</div>
-  <div id="cftc-root" style="max-width:1500px;margin:0 auto;padding:22px"></div>
-</div>
-<div id="seasonals-page" style="display:none">
-<div id="seasonals-topbar" style="padding:14px 20px;border-bottom:1px solid var(--amber);background:var(--bg);display:flex;align-items:center;gap:20px">
-  <h1 style="font-size:18px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);white-space:nowrap">Seasonals</h1>
-</div>
-  <div id="seasonals-root" style="max-width:100%;margin:0 auto;padding:22px"></div>
-</div>
-<div id="exports-page" style="display:none">
-<div id="exports-topbar" style="padding:14px 20px;border-bottom:1px solid var(--amber);background:var(--bg);display:flex;align-items:center;gap:20px">
-  <h1 style="font-size:18px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);white-space:nowrap">USDA Export Sales</h1>
-  <div id="exports-meta" style="font-size:13px;color:var(--text3);letter-spacing:.04em;margin-left:auto">Loading...</div>
-</div>
-  <div id="exports-root" style="max-width:1400px;margin:0 auto;padding:22px"></div>
-</div>
-<div id="weather-page" style="display:none">
-<div id="weather-topbar" style="padding:14px 20px;border-bottom:1px solid var(--amber);background:var(--bg);display:flex;align-items:center;gap:20px">
-  <h1 style="font-size:18px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);white-space:nowrap">Weather &amp; Crop Calendar</h1>
-  <div id="weather-meta" style="font-size:13px;color:var(--text3);letter-spacing:.04em;margin-left:auto">Loading...</div>
-</div>
-  <div id="weather-root" style="max-width:1300px;margin:0 auto;padding:22px"></div>
-</div>
 
 <script>
-const COMMS = ["Wheat","Corn","Soybeans","Rapeseed/Canola","Oats","Cotton","Coffee","Sugar","Vegoils","Meal"];
-const BU_PER_MT = {Wheat:36.7437, Corn:39.3680, Soybeans:36.7437, "Rapeseed/Canola":44.0924, Oats:68.8955};
-const ACRES_PER_HA = 2.47105;
-const HIST_YEARS = 7;
+/* =========================================================== config */
+const GRAINS = [
+  {k:'canola', n:'CANOLA', crush:'CRUSH', fi:'Crush (food & industrial)'},
+  {k:'wheat',  n:'WHEAT',  crush:'MILLED', fi:'Food & industrial', sub:'ex-durum'},
+  {k:'oats',   n:'OATS',   crush:'MILLED', fi:'Food & industrial'},
+];
+const METRICS = [
+  {k:'exp', n:'EXPORTS',                flow:true, proj:true},
+  {k:'dom', n:'DOMESTIC DISAPPEARANCE', flow:true, proj:true},
+  {k:'stk', n:'COMMERCIAL STOCKS',      flow:false},
+  {k:'del', n:'PRODUCER DELIVERIES',    flow:true},
+];
+let D=null, S=null, charts=[];
+const state = {page:'cgc', tab:'canola', metric:'exp', zoom:false};
 
-const EXPORTERS = {
-  Wheat: ["United States","European Union","Russia","Canada","Australia","Ukraine","Argentina"],
-  Corn: ["United States","Brazil","Argentina","Ukraine","European Union"],
-  Soybeans: ["United States","Brazil","Argentina","Paraguay"],
-  "Rapeseed/Canola": ["Canada","Australia","European Union","Ukraine"],
-  Oats: ["Canada"],
-  Cotton: ["United States","Brazil","Australia","India"],
-  Coffee: ["Brazil","Vietnam","Colombia","Indonesia","Ethiopia","Honduras"],
-  Sugar: ["Brazil","India","Thailand","Australia"]
-};
-const IMPORTERS = {
-  Wheat: ["China","Indonesia","Egypt","Turkey","Algeria","Brazil","Japan","Philippines","Morocco","South Korea","Mexico","Bangladesh"],
-  Corn: ["China","Mexico","Japan","South Korea","Vietnam","Egypt","Colombia","Malaysia","Algeria","Indonesia","Iran"],
-  Soybeans: ["China","European Union","Mexico","Japan","Egypt","Thailand","Indonesia","Turkey","Bangladesh","Taiwan"],
-  "Rapeseed/Canola": ["China","Japan","Bangladesh","Pakistan","Mexico","United States","South Korea"],
-  Oats: ["United States"],
-  Cotton: ["Bangladesh","Vietnam","China","Pakistan","Indonesia","Turkey"],
-  Coffee: ["European Union","United States","Japan"],
-  Sugar: ["China","Indonesia","United States","Bangladesh"]
-};
+/* =========================================================== helpers */
+const fmt = (v,d=1) => v==null||isNaN(v) ? '–' : v.toLocaleString('en-CA',{minimumFractionDigits:d,maximumFractionDigits:d});
+const pct = (a,b) => (a==null||b==null||!b) ? null : (a/b-1)*100;
+const pctHtml = p => p==null ? '<span>–</span>' : `<span class="${p>=0?'up':'dn'}">${p>=0?'+':''}${p.toFixed(1)}%</span>`;
+const pctTd = p => p==null ? '<td>–</td>' : `<td class="${p>=0?'up':'dn'}">${p>=0?'+':''}${p.toFixed(1)}%</td>`;
+const at = (arr,w) => arr && arr[w-1]!=null ? arr[w-1] : null;
+const mean = xs => { xs = xs.filter(x=>x!=null); return xs.length ? xs.reduce((a,b)=>a+b,0)/xs.length : null; };
+const label = cy => cy.slice(2,4)+'/'+cy.slice(7,9);
+const css = v => getComputedStyle(document.body).getPropertyValue(v).trim();
+const fdate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('en-CA',{month:'short',day:'numeric',year:'numeric'}) : '';
+const sdate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('en-CA',{month:'short',day:'numeric'}) : '';
+const ordinal = n => { if (n<=0) return 'lowest'; const s=['th','st','nd','rd'], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); };
 
-let DATA = null;
-let currentComm = "Wheat";
-let currentUnit = "mt";
-let currentTheme = "light";
-
-function fmt(v){
-  if(v===null || v===undefined || isNaN(v)) return '—';
-  return Math.round(v).toLocaleString();
+/* =========================================================== theme + nav */
+function getTheme(){ try{ return localStorage.getItem('cgc-theme')||'light'; }catch(e){ return 'light'; } }
+function setTheme(t){
+  document.body.classList.toggle('dark', t==='dark'); document.body.classList.toggle('light', t==='light');
+  document.querySelectorAll('#theme-toggle .tbtn').forEach(b=>b.classList.toggle('active', b.dataset.t===t));
+  try{ localStorage.setItem('cgc-theme', t); }catch(e){}
 }
-function fmt2(v){
-  if(v===null || v===undefined || isNaN(v)) return '—';
-  return v.toFixed(1);
+setTheme(getTheme());
+document.querySelectorAll('#theme-toggle .tbtn').forEach(b=>b.onclick=()=>{ setTheme(b.dataset.t); render(); });
+document.querySelectorAll('.page-tab').forEach(b=>b.onclick=()=>{
+  state.page=b.dataset.page;
+  document.querySelectorAll('.page-tab').forEach(x=>x.classList.toggle('active', x===b));
+  render();
+});
+function renderGrainToggle(){
+  const el=document.getElementById('grain-toggle');
+  el.innerHTML = GRAINS.map(g=>`<button class="tbtn ${state.tab===g.k?'active':''}" data-k="${g.k}">${g.n}</button>`).join('');
+  el.querySelectorAll('.tbtn').forEach(b=>b.onclick=()=>{ state.tab=b.dataset.k; render(); });
 }
-function fmtStu(v){ return v===null ? '—' : v.toFixed(1)+'%'; }
-function ordinal(n){
-  const r = Math.round(n);
-  const mod100 = r % 100;
-  if(mod100>=11 && mod100<=13) return r+'th';
-  switch(r % 10){
-    case 1: return r+'st';
-    case 2: return r+'nd';
-    case 3: return r+'rd';
-    default: return r+'th';
-  }
-}
-function fmtYoy(v){
-  if(v===null) return '—';
-  const s = v>=0?'+':'';
-  return s+v.toFixed(1)+'%';
-}
-function yoyPct(cur,prev){
-  if(cur===null||prev===null||prev===0) return null;
-  return (cur-prev)/Math.abs(prev)*100;
+function panel(title, sub, right, body){
+  return `<div class="panel"><div class="panel-hdr"><span class="panel-title">${title}</span><span class="panel-sub">${sub||''}</span>${right?`<span class="right">${right}</span>`:''}</div>${body}</div>`;
 }
 
-// ---- Prior WASDE comparison ----
-// psd_data.json carries `_prior`: the previous WASDE's numbers for each commodity's latest market year (built by
-// fetch_psd.py from the repo's own history). attachPrior() hangs each one on the matching current-year record as `_p`,
-// so every table can read "what the prior estimate was" from the same place it reads the current number.
-function attachPrior(data){
-  const pr = data && data._prior && data._prior.data;
-  if(!pr) return;
-  Object.keys(pr).forEach(comm=>{
-    const cdata = data[comm]; if(!cdata) return;
-    Object.keys(pr[comm]).forEach(country=>{
-      const cd = cdata[country]; if(!cd) return;
-      Object.keys(pr[comm][country]).forEach(y=>{ if(cd[y]) cd[y]._p = pr[comm][country][y]; });
-    });
-  });
+/* =========================================================== CGC data access */
+const _fill = {};
+function interp(a){          // fill interior holiday-gap weeks in cumulative / level series
+  if (!a) return a; const o=a.slice(); let last=-1;
+  for (let i=0;i<o.length;i++){ if (o[i]==null) continue;
+    if (last>=0 && i-last>1) for (let j=last+1;j<i;j++) o[j]=o[last]+(o[i]-o[last])*(j-last)/(i-last);
+    last=i; }
+  return o;
 }
-function priorHeader(){
-  const d = parseAnyDate(DATA && DATA._prior && DATA._prior.release);
-  return d ? 'Prior ' + fmtAsOfDate(d, false) : 'Prior WASDE';
+function series(g, cy, key){
+  const a=(D.grains[g][cy]||{})[key];
+  if (!a || !(/_cy$/.test(key) || /^stk/.test(key) || /^port_cy|^delprov/.test(key))) return a;
+  const k=g+'|'+cy+'|'+key; return _fill[k] || (_fill[k]=interp(a));
 }
-// signed change, e.g. +1,250 / -80 / 0 (0 decimals unless told otherwise)
-function fmtChg(v, d){
-  if(v===null || v===undefined || isNaN(v)) return '—';
-  const dec = d || 0;
-  const r = Number(v.toFixed(dec));
-  if(r === 0) return '0';
-  return (r>0?'+':'-') + Math.abs(r).toLocaleString(undefined, {minimumFractionDigits:dec, maximumFractionDigits:dec});
+function hist(){ return D.years.slice(1); }
+function ly(){ return D.years[1]; }
+function val(g, cy, m, w, mode){ return m==='stk' ? at(series(g,cy,'stk'), w) : at(series(g,cy, m+'_'+(mode||'cy')), w); }
+function avg5(g, m, w, mode){ return mean(hist().map(cy => val(g,cy,m,w,mode))); }
+function maxWeeks(){ const n=Math.max(...D.years.map(cy=>(D.dates[cy]||[]).length)); return Array.from({length:n},(_,i)=>i+1); }
+function avgSeries(g,m,mode){ return maxWeeks().map(w=>avg5(g,m,w,mode)); }
+function bandSeries(g,key){
+  const H=hist(), W=maxWeeks(), vals = w => H.map(cy=>at(series(g,cy,key),w)).filter(x=>x!=null);
+  return {max:W.map(w=>{const v=vals(w);return v.length?Math.max(...v):null}), min:W.map(w=>{const v=vals(w);return v.length?Math.min(...v):null})};
 }
-function chgClass(v, d){
-  if(v===null || v===undefined || isNaN(v)) return '';
-  const r = Number(v.toFixed(d||0));
-  return r>0 ? 'up' : (r<0 ? 'dn' : '');
-}
-
-function getRaw(yearData, key){
-  const v = yearData ? yearData[key] : undefined;
-  return (v!==undefined && !isNaN(v)) ? v : null;
-}
-function getTotalRaw(yearData, keys){
-  let sum=0, any=false;
-  for(const k of keys){ const v=getRaw(yearData,k); if(v!==null){sum+=v;any=true;} }
-  return any?sum:null;
-}
-function getStu(yearData){
-  const end=getRaw(yearData,'es'), dom=getRaw(yearData,'dc'), exp=getRaw(yearData,'ex');
-  if(end===null||dom===null) return null;
-  const denom=dom+(exp||0);
-  return denom>0 ? (end/denom)*100 : null;
-}
-// Commodities with no bushel weight — no MT/BU toggle makes sense for these; Cotton also
-// stays in its native bales unit, while Cocoa/Coffee/Sugar stay in MT (just no bushel toggle).
-const NO_BUSHEL_COMMS = new Set(['Cotton', 'Cocoa', 'Coffee', 'Sugar']);
-
-function convertVal(raw, unit, comm){
-  if(raw===null) return null;
-  if(comm==='Cotton') return raw; // cotton stays in its native USDA unit (1000 480-lb bales), no bu/mt conversion applies
-  if(NO_BUSHEL_COMMS.has(comm)) return raw; // Cocoa/Coffee/Sugar: no bushel weight exists for these, stay in MT
-  if(unit==='bu') return raw * (BU_PER_MT[comm]||36.7437) / 1000;
-  return raw;
-}
-function yieldBuAc(prRaw, ahRaw, comm){
-  if(prRaw===null||ahRaw===null||ahRaw===0) return null;
-  const mtPerHa = prRaw/ahRaw;
-  return mtPerHa * (BU_PER_MT[comm]||36.7437) / ACRES_PER_HA;
-}
-// Cotton yield, authentic to how cotton traders read it: lbs of lint per harvested acre,
-// not bushels — cotton isn't a bushel commodity. 1 bale = 480 lb (USDA's own cotton unit).
-function yieldLbAcCotton(prRaw, ahRaw){
-  if(prRaw===null||ahRaw===null||ahRaw===0) return null;
-  const balesPerHa = prRaw/ahRaw;
-  return balesPerHa * 480 / ACRES_PER_HA;
-}
-// Coffee: production is reported in thousands of 60kg bags (confirmed via sanity-check
-// log — 189,667 matches world coffee production only if read as bags, not MT). Same
-// treatment as cotton's bales — its own conversion, not the generic MT-based one below.
-function yieldLbAcCoffee(prRaw, ahRaw){
-  if(prRaw===null||ahRaw===null||ahRaw===0) return null;
-  const bagsPerHa = prRaw/ahRaw;
-  return bagsPerHa * 132.277 / ACRES_PER_HA; // 1 bag = 60kg = 132.277 lb
-}
-// Sugar: production IS in plain metric tons (confirmed — its sanity check passed cleanly
-// at MT scale), so this generic MT-to-lb conversion applies correctly.
-function yieldLbAc(prRaw, ahRaw){
-  if(prRaw===null||ahRaw===null||ahRaw===0) return null;
-  const mtPerHa = prRaw/ahRaw;
-  return mtPerHa * 2204.62 / ACRES_PER_HA;
-}
-function acresK(ahRaw){ return ahRaw===null ? null : ahRaw*ACRES_PER_HA; }
-
-function sumCountries(countries, countryNames, year){
-  const keys=['ah','bs','pr','im','dc','ex','es'];
-  const out={}; let any=false;
-  const pOut={}; let pAny=false;
-  for(const k of keys){
-    let s=0, has=false, ps=0, pHas=false, pMissing=false;
-    for(const c of countryNames){
-      const cd = countries[c];
-      const rec = cd ? cd[year] : undefined;
-      const v = rec ? rec[k] : undefined;
-      if(v!==undefined && !isNaN(v)){
-        s+=v; has=true; any=true;
-        const pv = rec._p ? rec._p[k] : undefined;
-        if(pv!==undefined && !isNaN(pv)){ ps+=pv; pHas=true; } else { pMissing=true; }
-      }
-    }
-    out[k]= has ? s : undefined;
-    // the aggregate's prior is only meaningful if EVERY contributing country has a prior (else it would show a fake revision)
-    if(has && pHas && !pMissing){ pOut[k]=ps; pAny=true; }
-  }
-  if(!any) return null;
-  if(pAny) out._p = pOut;
-  return out;
+/* seasonal pace: current CYTD ÷ avg share of full-year total done by this week in prior years */
+function finalOf(g, cy, m){ const a = series(g,cy,m+'_cy')||[]; for(let i=a.length-1;i>=0;i--) if(a[i]!=null) return a[i]; return null; }
+function shareAt(g, cy, m, w){ const f=finalOf(g,cy,m), v=val(g,cy,m,w,'cy'); return (f && v!=null) ? v/f : null; }
+function projection(g, m){
+  const w = D.latest_week, cur = val(g,D.current,m,w,'cy');
+  const H = hist().filter(cy => (D.dates[cy]||[]).length >= 50);
+  const shares = H.map(cy=>shareAt(g,cy,m,w)).filter(x=>x);
+  if (!cur || !shares.length) return null;
+  const avgShare = mean(shares), implied = cur/avgShare, each = shares.map(s=>cur/s);
+  const line = maxWeeks().map(x => x < w ? null : (x===w ? cur : (()=>{ const sh=mean(H.map(cy=>shareAt(g,cy,m,x)).filter(v=>v)); return sh ? implied*sh : null; })()));
+  return {implied, lo:Math.min(...each), hi:Math.max(...each), avgShare, line, cur, lyFinal:finalOf(g,ly(),m), n:shares.length};
 }
 
-function unitLabel(){
-  if(currentComm==='Cotton') return '1000 Bales (480 lb)';
-  if(currentComm==='Coffee') return '1000 Bags (60kg)';
-  if(NO_BUSHEL_COMMS.has(currentComm)) return '1000 MT'; // Sugar: MT, bu toggle just doesn't apply
-  return currentUnit==='bu' ? 'Million Bu' : '1000 MT';
-}
-
-function buildBalanceTable(comm, yearDataFn, years, includeYoy, allYearsFull){
-  const latestYear = years[years.length-1];
-  const prevYear = years.length>1 ? years[years.length-2] : null;
-
-  // Full-history S/U values (not just the displayed years) for percentile ranking.
-  const fullYears = allYearsFull || years;
-  const stuHistory = fullYears.map(y => getStu(yearDataFn(y))).filter(v => v!==null);
-  function stuPctile(y){
-    const v = getStu(yearDataFn(y));
-    if(v===null || stuHistory.length===0) return null;
-    const countLE = stuHistory.filter(x => x<=v).length;
-    return (countLE/stuHistory.length)*100;
-  }
-
-  const isCotton = comm === 'Cotton';
-  const usesLbAcYield = NO_BUSHEL_COMMS.has(comm);
-  const ROWS = [
-    {type:'row', key:'ah', label:'Area harvested (1000 ac)', area:true},
-    {type:'row', key:'yl', label: isCotton ? 'Yield (lb lint/ac)' : (usesLbAcYield ? 'Yield (lb/ac)' : 'Yield (bu/ac)'), yield:true},
-    {type:'section', label:'Supply'},
-    {type:'row', key:'bs', label:'Beginning stocks'},
-    {type:'row', key:'pr', label:'Production'},
-    {type:'row', key:'im', label:'Imports'},
-    {type:'total', keys:['bs','pr','im'], label:'Total supply'},
-    {type:'section', label:'Use'},
-    {type:'row', key:'dc', label: isCotton ? 'Mill use' : 'Dom. consumption'},
-    {type:'row', key:'ex', label:'Exports'},
-    {type:'total', keys:['dc','ex'], label:'Total demand'},
-    {type:'section', label:'Balance'},
-    {type:'row', key:'es', label:'Ending stocks', cls:'row-ending'},
-    {type:'stu', label:'Stocks / Use %', cls:'row-stu'},
-    {type:'stu_pctile', label:'S/U Percentile Rank (' + fullYears.length + 'yr hist)', cls:'row-pctile'},
-  ];
-
-  // value of a row for one year-record (works for the current numbers and for the prior-WASDE `_p` record alike)
-  function valFromYd(row, yd){
-    if(row.area) return acresK(getRaw(yd,'ah'));
-    if(row.yield){
-      if(isCotton) return yieldLbAcCotton(getRaw(yd,'pr'), getRaw(yd,'ah'));
-      if(comm==='Coffee') return yieldLbAcCoffee(getRaw(yd,'pr'), getRaw(yd,'ah'));
-      if(usesLbAcYield) return yieldLbAc(getRaw(yd,'pr'), getRaw(yd,'ah'));
-      return yieldBuAc(getRaw(yd,'pr'), getRaw(yd,'ah'), comm);
-    }
-    if(row.type==='total') return convertVal(getTotalRaw(yd, row.keys), currentUnit, comm);
-    if(row.type==='stu') return getStu(yd);
-    return convertVal(getRaw(yd, row.key), currentUnit, comm);
-  }
-  function displayVal(row, y){
-    if(row.type==='stu_pctile') return stuPctile(y);
-    return valFromYd(row, yearDataFn(y));
-  }
-  const latestYd = yearDataFn(latestYear);
-  const priorYd = latestYd && latestYd._p ? latestYd._p : null;
-  // prior-WASDE cells for one row; a total is only compared when every component exists in BOTH vintages
-  function priorCells(row){
-    const blank = '<td class="grp-l prior">—</td><td class="prior">—</td>';
-    if(row.type==='stu_pctile' || !priorYd) return blank;
-    if(row.type==='total' && !row.keys.every(k=>getRaw(priorYd,k)!==null && getRaw(latestYd,k)!==null)) return blank;
-    const pv = valFromYd(row, priorYd), cv = valFromYd(row, latestYd);
-    if(pv===null) return blank;
-    const d = (row.type==='stu' || row.yield) ? 1 : 0;
-    const chg = cv!==null ? cv - pv : null;
-    const pText = row.type==='stu' ? fmtStu(pv) : (row.yield ? fmt2(pv) : fmt(pv));
-    const cText = chg===null ? '—' : fmtChg(chg, d) + (row.type==='stu' && chg!==null && Number(chg.toFixed(1))!==0 ? 'pp' : '');
-    return `<td class="grp-l prior">${pText}</td><td class="${chgClass(chg, d)}">${cText}</td>`;
-  }
-
-  let html = `<div class="tbl-wrap"><table class="bal-table"><colgroup><col style="width:175px">`;
-  for(const y of years) html += '<col>';
-  if(includeYoy) html += '<col style="width:75px"><col style="width:100px"><col style="width:80px">';
-  html += `</colgroup><thead><tr><th>ITEM</th>`;
-  for(const y of years) html += `<th class="${y===latestYear?'latest':''}">${y}</th>`;
-  if(includeYoy) html += `<th class="yoy">YoY Δ</th><th class="yoy grp-l">${priorHeader()}</th><th class="yoy">Chg</th>`;
-  html += `</tr></thead><tbody>`;
-
-  let alt=false;
-  for(const row of ROWS){
-    if(row.type==='section'){
-      html += `<tr class="row-section"><td colspan="${years.length+1+(includeYoy?3:0)}">${row.label}</td></tr>`;
-      alt=false; continue;
-    }
-    const cls=[row.cls||'', alt?'row-alt':''].filter(Boolean).join(' ');
-    html += `<tr class="${cls}"><td>${row.label}</td>`;
-    alt=!alt;
-    const vals = years.map(y=>displayVal(row,y));
-    for(let i=0;i<years.length;i++){
-      const v=vals[i], prev=i>0?vals[i-1]:null;
-      let tdCls = years[i]===latestYear?'latest':'';
-      if(row.type!=='stu' && row.type!=='stu_pctile' && v!==null && prev!==null){
-        if(v>prev) tdCls+=' up'; else if(v<prev) tdCls+=' dn';
-      }
-      if(row.type==='stu_pctile' && v!==null){
-        tdCls += v<=25 ? ' pctile-tight' : (v>=75 ? ' pctile-loose' : ' pctile-mid');
-      }
-      const text = row.type==='stu' ? fmtStu(v) : (row.type==='stu_pctile' ? (v===null?'—':ordinal(v)) : (row.yield ? fmt2(v) : fmt(v)));
-      html += `<td class="${tdCls.trim()}">${text}</td>`;
-    }
-    if(includeYoy){
-      if(row.type==='stu_pctile'){
-        html += `<td class="latest">—</td>`;
-      } else {
-        const cur = displayVal(row, latestYear);
-        const prev = prevYear ? displayVal(row, prevYear) : null;
-        const yoy = row.type==='stu' ? (cur!==null&&prev!==null?cur-prev:null) : yoyPct(cur,prev);
-        let cls = 'latest';
-        if(yoy!==null){ cls += yoy>0?' up':(yoy<0?' dn':''); }
-        const text = row.type==='stu' ? (yoy===null?'—':(yoy>=0?'+':'')+yoy.toFixed(1)+'pp') : fmtYoy(yoy);
-        html += `<td class="${cls}">${text}</td>`;
-      }
-      html += priorCells(row);
-    }
-    html += '</tr>';
-  }
-  html += '</tbody></table></div>';
-  return html;
-}
-
-function panelWrap(title, sub, innerHtml){
-  return `<div class="panel"><div class="panel-hdr"><span class="panel-title">${title}</span><span class="panel-sub">${sub}</span></div>${innerHtml}</div>`;
-}
-
-// Looks up CROP_CALENDAR (defined later in the file, safe since this only runs after full page load)
-// for a country's harvest months for a given USDA commodity, so panel headers can show a quick
-// "when does this country harvest" hint without needing to check the separate calendar table.
-function getHarvestMonthsLabel(comm, country){
-  if(typeof CROP_CALENDAR === 'undefined') return '';
-  const sectionMap = {'Wheat':'Wheat','Corn':'Corn','Soybeans':'Soybeans','Rapeseed/Canola':'Canola','Cotton':'Cotton','Cocoa':'Cocoa','Coffee':'Coffee','Sugar':'Sugar'};
-  const section = sectionMap[comm];
-  if(!section) return '';
-  const matches = CROP_CALENDAR.filter(r=>r.section===section && (r.origin===country || r.origin.indexOf(country+' (')===0));
-  if(!matches.length) return '';
-  const months = new Set();
-  matches.forEach(m=>m.harvest.forEach(mo=>months.add(mo)));
-  if(!months.size) return '';
-  const MONNAMES=['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return [...months].sort((a,b)=>a-b).map(m=>MONNAMES[m]).join('/');
-}
-function panelTitleWithHarvest(comm, country){
-  const months = getHarvestMonthsLabel(comm, country);
-  const base = country.toUpperCase();
-  return months ? `${base} <span style="color:var(--text3);font-weight:600;font-size:11px;letter-spacing:.02em;text-transform:none">(harvest: ${months})</span>` : base;
-}
-
-// Multi-year, country-by-year breakout table for a single metric (e.g. Acres across N years), plus YoY change.
-function buildMetricByCountryTable(countryList, countries, years, metric){
-  const latestYear = years[years.length-1];
-  const prevYear = years.length>1 ? years[years.length-2] : null;
-  let html = `<div class="tbl-wrap"><table class="bal-table"><thead><tr><th>Country</th>`;
-  years.forEach(y=>{ html += `<th class="${y===latestYear?'latest':''}">${y}</th>`; });
-  html += `<th class="yoy">YoY Δ</th><th class="yoy grp-l">${priorHeader()}</th><th class="yoy">Chg</th>`;
-  html += `</tr></thead><tbody>`;
-
-  let alt=false;
-  const totals = {};
-  years.forEach(y=>totals[y]={sum:0,has:false});
-  const pTot = {sum:0, has:false, missing:false};   // prior total only if every country has a prior value
-
-  function metricVal(cd, y){
-    if(metric==='ah') return acresK(getRaw(cd[y], 'ah'));
-    return convertVal(getRaw(cd[y], metric), currentUnit, currentComm);
-  }
-
-  countryList.forEach(c=>{
-    const cd = countries[c] || {};
-    html += `<tr class="${alt?'row-alt':''}"><td>${c}</td>`;
-    alt=!alt;
-    let prevVal = null;
-    years.forEach(y=>{
-      const v = metricVal(cd, y);
-      if(v!==null){ totals[y].sum += v; totals[y].has = true; }
-      let cls = y===latestYear ? 'latest' : '';
-      if(v!==null && prevVal!==null){ cls += v>prevVal?' up':(v<prevVal?' dn':''); }
-      html += `<td class="${cls.trim()}">${fmt(v)}</td>`;
-      prevVal = v;
-    });
-    const curV = metricVal(cd, latestYear);
-    const prevV = prevYear ? metricVal(cd, prevYear) : null;
-    const yoy = yoyPct(curV, prevV);
-    let yoyCls = 'latest';
-    if(yoy!==null){ yoyCls += yoy>0?' up':(yoy<0?' dn':''); }
-    html += `<td class="${yoyCls}">${fmtYoy(yoy)}</td>`;
-    // prior WASDE: the latest year's prior value for this country + the revision
-    const pRec = cd[latestYear] ? cd[latestYear]._p : undefined;
-    const pV = pRec ? (metric==='ah' ? acresK(getRaw(pRec,'ah')) : convertVal(getRaw(pRec, metric), currentUnit, currentComm)) : null;
-    if(curV!==null){ if(pV!==null){ pTot.sum += pV; pTot.has = true; } else { pTot.missing = true; } }
-    const rChg = (curV!==null && pV!==null) ? curV - pV : null;
-    html += `<td class="grp-l prior">${fmt(pV)}</td><td class="${chgClass(rChg,0)}">${fmtChg(rChg,0)}</td>`;
-    html += `</tr>`;
-  });
-
-  html += `<tr class="row-total"><td>Total</td>`;
-  years.forEach(y=>{
-    const t = totals[y];
-    const v = t.has ? t.sum : null;
-    html += `<td>${fmt(v)}</td>`;
-  });
-  const totCur = totals[latestYear].has ? totals[latestYear].sum : null;
-  const totPrev = prevYear && totals[prevYear].has ? totals[prevYear].sum : null;
-  const totYoy = yoyPct(totCur, totPrev);
-  html += `<td>${fmtYoy(totYoy)}</td>`;
-  const pTotV = (pTot.has && !pTot.missing) ? pTot.sum : null;
-  const tChg = (pTotV!==null && totCur!==null) ? totCur - pTotV : null;
-  html += `<td class="grp-l prior">${fmt(pTotV)}</td><td class="${chgClass(tChg,0)}">${fmtChg(tChg,0)}</td>`;
-  html += `</tr></tbody></table></div>`;
-  return html;
-}
+/* =========================================================== boot */
+Promise.all([
+  fetch('data/cgc.json?'+Date.now()).then(r=>r.ok?r.json():null).catch(()=>null),
+  fetch('data/sd.json?'+Date.now()).then(r=>r.ok?r.json():null).catch(()=>null),
+]).then(([c,s])=>{ D=c; S=s; render(); });
 
 function render(){
+  renderGrainToggle();
+  const g = GRAINS.find(x=>x.k===state.tab);
+  document.getElementById('banner').innerHTML='';
+  if (state.page==='cgc') renderCGC(g); else renderSD(g);
+}
+
+/* =========================================================== CGC page */
+function cgcMeta(){
+  const v = D.verified, ok = v && v.week===D.latest_week && v.crop_year===D.current;
+  const tag = ok ? `<span class="ok" title="Latest week matched ${v.cells} figures on the official CGC Excel Summary tab (max diff ${v.max_diff} kt)">✓ VERIFIED vs CGC SUMMARY (${v.cells}/${v.cells})</span>` : `<span class="warn">NOT VERIFIED</span>`;
+  return `CY ${D.current} · WEEK ${D.latest_week} · ending ${fdate(D.latest_date)}<br>${tag} · updated ${D.updated.replace('T',' ').slice(0,16)} UTC · <a href="${D.source_url}" target="_blank">CGC GSW</a>`;
+}
+function renderCGC(g){
+  document.getElementById('title').textContent = 'CGC Grain Statistics';
   const root = document.getElementById('root');
-  root.innerHTML = '';
-  const comm = currentComm;
-  updateUsdaMeta();   // the "data as of" line depends on the selected commodity
+  if (!D){ document.getElementById('meta').textContent=''; root.innerHTML='<div id="err">Could not load data/cgc.json — run the GitHub Action once.</div>'; return; }
+  document.getElementById('meta').innerHTML = cgcMeta();
+  const age = D.latest_date ? Math.floor((Date.now() - new Date(D.latest_date+'T12:00:00'))/864e5) : 999;
+  if (age > 12) document.getElementById('banner').innerHTML = `<div>⚠ DATA STALE — latest CGC week ended ${fdate(D.latest_date)} (${age} days ago). The weekly update has likely failed — check the repo's Actions tab.</div>`;
 
-  const convLabel = document.getElementById('conv-label');
-  const unitToggleEl = document.getElementById('unit-toggle');
+  const w = D.latest_week, m = METRICS.find(x=>x.k===state.metric);
+  const kpis = METRICS.map(x=>{
+    const mode = x.flow?'cy':null;
+    const cur=val(g.k,D.current,x.k,w,mode), l=val(g.k,ly(),x.k,w,mode), a=avg5(g.k,x.k,w,mode);
+    const wk = x.flow ? val(g.k,D.current,x.k,w,'wk') : null, wkl = x.flow ? val(g.k,ly(),x.k,w,'wk') : null;
+    return `<div class="kpi">
+      <div class="t">${x.n} · ${x.flow?'CYTD':'LEVEL'}</div>
+      <div class="v">${fmt(cur)} <small>kt</small></div>
+      <div class="r"><span>vs LY ${pctHtml(pct(cur,l))}</span><span>vs avg ${pctHtml(pct(cur,a))}</span></div>
+      <div class="r"><span>${x.flow?'Wk '+w+': '+fmt(wk):'Chg wk: '+fmtChg(val(g.k,D.current,'stk',w),val(g.k,D.current,'stk',w-1))}</span><span>${x.flow?'LY wk: '+fmt(wkl):'LY: '+fmt(l)}</span></div>
+      ${x.proj ? projRow(g.k,x.k) : ''}
+    </div>`;
+  }).join('');
 
-  // Vegoils: a different shape entirely — combines 4 separate oil commodities
-  // rather than showing one commodity's own data, so it's handled as its own
-  // render path rather than the shared World/Exporters/Importers/breakout template.
-  if(comm === 'Vegoils'){
-    if(unitToggleEl) unitToggleEl.style.display = 'none';
-    convLabel.textContent = '1000 MT — palm + soy + rapeseed + sunflower oil';
-    renderVegoilsInto(root);
-    return;
+  root.innerHTML = `
+  <div class="kpis">${kpis}</div>
+  ${panel('LAST 10 WEEKS', g.n+(g.sub?' · '+g.sub:'')+' · 1000 MT', '', `<div class="tbl-wrap">${recentTable(g)}</div>`)}
+  ${cgcNotes()}`;
+}
+function projRow(g,m){
+  const P = projection(g,m); if (!P) return '';
+  return `<div class="proj" title="Current CYTD ÷ avg share of the full-year total done by week ${D.latest_week} in the prior ${P.n} crop years (${(P.avgShare*100).toFixed(0)}%). Range uses each year's share alone.">
+    <span>Seasonal pace →</span><b>${fmt(P.implied,0)}</b></div>
+    <div class="r"><span>range</span><span>${fmt(P.lo,0)}–${fmt(P.hi,0)}</span></div>
+    <div class="r"><span>vs LY final ${pctHtml(pct(P.implied,P.lyFinal))}</span><span>LY ${fmt(P.lyFinal,0)}</span></div>`;
+}
+function fmtChg(a,b){ if(a==null||b==null) return '–'; const d=a-b; return `<span class="${d>=0?'up':'dn'}">${d>=0?'+':''}${fmt(d)}</span>`; }
+function portTable(g){
+  const w=D.latest_week; let tw=0,tc=0,tl=0;
+  const rows = D.ports.map(p=>{
+    const wk=at(series(g,D.current,'port_wk_'+p),w)||0, c=at(series(g,D.current,'port_cy_'+p),w)||0, l=at(series(g,ly(),'port_cy_'+p),w)||0;
+    tw+=wk; tc+=c; tl+=l;
+    return `<tr><td>${p}</td><td>${fmt(wk)}</td><td>${fmt(c)}</td><td class="prior">${fmt(l)}</td>${pctTd(pct(c,l))}</tr>`;
+  }).join('');
+  const dc=val(g,D.current,'expdirect',w,'cy')||0, dl=val(g,ly(),'expdirect',w,'cy')||0, dw=val(g,D.current,'expdirect',w,'wk')||0;
+  return `<table class="bal-table"><thead><tr><th>PORT</th><th>WK ${w}</th><th class="latest">CYTD</th><th class="prior">LY CYTD</th><th class="yoy">vs LY</th></tr></thead><tbody>${rows}
+   <tr class="row-total"><td>Terminal total</td><td>${fmt(tw)}</td><td>${fmt(tc)}</td><td>${fmt(tl)}</td>${pctTd(pct(tc,tl))}</tr>
+   <tr><td>Direct (primaries + prod. cars)</td><td>${fmt(dw)}</td><td>${fmt(dc)}</td><td class="prior">${fmt(dl)}</td>${pctTd(pct(dc,dl))}</tr>
+   <tr class="row-ending"><td>Total exports</td><td>${fmt(tw+dw)}</td><td>${fmt(tc+dc)}</td><td>${fmt(tl+dl)}</td>${pctTd(pct(tc+dc,tl+dl))}</tr></tbody></table>`;
+}
+function provTable(g){
+  const w=D.latest_week; let tc=0,tl=0;
+  const rows = D.provs.map(p=>{
+    const c=at(series(g,D.current,'delprov_'+p),w)||0, l=at(series(g,ly(),'delprov_'+p),w)||0; tc+=c; tl+=l;
+    return `<tr><td>${p}</td><td>${fmt(c)}</td><td class="prior">${fmt(l)}</td>${pctTd(pct(c,l))}</tr>`;
+  }).join('');
+  const pc=(val(g,D.current,'del',w,'cy')||0)-tc, pl=(val(g,ly(),'del',w,'cy')||0)-tl;
+  return `<table class="bal-table"><thead><tr><th>PROV</th><th class="latest">CYTD</th><th class="prior">LY CYTD</th><th class="yoy">vs LY</th></tr></thead><tbody>${rows}
+  <tr class="row-total"><td>Primary elevators</td><td>${fmt(tc)}</td><td>${fmt(tl)}</td>${pctTd(pct(tc,tl))}</tr>
+  <tr><td>Process elev. + prod. cars</td><td>${fmt(pc)}</td><td class="prior">${fmt(pl)}</td>${pctTd(pct(pc,pl))}</tr>
+  <tr class="row-ending"><td>Total producer deliveries</td><td>${fmt(tc+pc)}</td><td>${fmt(tl+pl)}</td>${pctTd(pct(tc+pc,tl+pl))}</tr></tbody></table>`;
+}
+function recentTable(g){
+  const n=D.latest_week, from=Math.max(1,n-9); let r='';
+  for(let w=n; w>=from; w--){
+    const c = w===n ? ' class="latest"' : '';
+    r+=`<tr><td>${w} · ${sdate(D.dates[D.current][w-1])}</td>
+      <td${c}>${fmt(val(g.k,D.current,'exp',w,'wk'))}</td><td${c}>${fmt(val(g.k,D.current,'dom',w,'wk'))}</td><td${c}>${fmt(val(g.k,D.current,'crush',w,'wk'))}</td>
+      <td${c}>${fmt(val(g.k,D.current,'stk',w))}</td><td${c}>${fmt(val(g.k,D.current,'del',w,'wk'))}</td><td${c}>${fmt(val(g.k,D.current,'rcpt',w,'wk'))}</td></tr>`;
   }
-  if(comm === 'Meal'){
-    if(unitToggleEl) unitToggleEl.style.display = 'none';
-    convLabel.textContent = '1000 MT — soy + rapeseed + sunflower meal';
-    renderMealInto(root);
-    return;
-  }
-  if(unitToggleEl) unitToggleEl.style.display = NO_BUSHEL_COMMS.has(comm) ? 'none' : '';
-
-  const countries = DATA[comm];
-
-  if(comm === 'Cotton'){
-    convLabel.textContent = 'Native units: 1000 bales (480 lb), acres, lb lint/acre';
-  } else if(comm === 'Coffee'){
-    convLabel.textContent = 'Native units: 1000 bags (60 kg), acres, lb/acre';
-  } else if(NO_BUSHEL_COMMS.has(comm)){
-    convLabel.textContent = '1000 MT, acres, lb/acre';
-  } else {
-    const buPerMt = BU_PER_MT[comm] || 36.7437;
-    convLabel.textContent = `1 MT = ${buPerMt.toFixed(2)} bu (${comm==='Rapeseed/Canola'?'Canola':comm})`;
-  }
-
-  if(!countries){ root.innerHTML = '<div id="err">No data for '+comm+'</div>'; return; }
-
-  const allYears = new Set();
-  Object.values(countries).forEach(yrs=>Object.keys(yrs).forEach(y=>allYears.add(y)));
-  const yearsAll = [...allYears].sort();
-  const years10 = yearsAll.slice(-HIST_YEARS);
-  if(!years10.length){ root.innerHTML = '<div id="err">No years of data available</div>'; return; }
-
-  const expList = (EXPORTERS[comm]||[]).filter(c=>countries[c]);
-  const impList = (IMPORTERS[comm]||[]).filter(c=>countries[c]);
-
-  // Oats: simplified view — just the two country balance sheets, nothing else.
-  if(comm === 'Oats'){
-    root.insertAdjacentHTML('beforeend', `<div class="sec-hdr">Oats — Canada / United States Balance Sheets</div>`);
-    const stackOats = document.createElement('div');
-    stackOats.className = 'stack-wrap';
-    ['Canada','United States'].filter(c=>countries[c]).forEach(c=>{
-      stackOats.insertAdjacentHTML('beforeend', panelWrap(c.toUpperCase(), unitLabel(),
-        buildBalanceTable(comm, y=>(countries[c]||{})[y], years10, true, yearsAll)));
-    });
-    root.appendChild(stackOats);
-    return;
-  }
-
-  root.insertAdjacentHTML('beforeend', `<div class="sec-hdr">World Balance Sheet — ${comm}</div>`);
-  root.insertAdjacentHTML('beforeend', panelWrap('WORLD', unitLabel(),
-    buildBalanceTable(comm, y=>(countries['World']||{})[y], years10, true, yearsAll)));
-
-  root.insertAdjacentHTML('beforeend', `<div class="sec-hdr">Major Exporters — Aggregate Balance Sheet</div>`);
-  root.insertAdjacentHTML('beforeend', panelWrap('MAJOR EXPORTERS', expList.join(', '),
-    buildBalanceTable(comm, y=>sumCountries(countries, expList, y), years10, true, yearsAll)));
-
-  root.insertAdjacentHTML('beforeend', `<div class="sec-hdr">Major Importers — Aggregate Balance Sheet</div>`);
-  root.insertAdjacentHTML('beforeend', panelWrap('MAJOR IMPORTERS', impList.join(', '),
-    buildBalanceTable(comm, y=>sumCountries(countries, impList, y), years10, true, yearsAll)));
-
-  root.insertAdjacentHTML('beforeend', `<div class="sec-hdr">Major Exporters — Individual Balance Sheets</div>`);
-  const stack = document.createElement('div');
-  stack.className = 'stack-wrap';
-  expList.forEach(c=>{
-    stack.insertAdjacentHTML('beforeend', panelWrap(panelTitleWithHarvest(comm, c), unitLabel(),
-      buildBalanceTable(comm, y=>(countries[c]||{})[y], years10, true, yearsAll)));
-  });
-  root.appendChild(stack);
-
-  // Exporters: Acres / Production / Exports, each as its own 10-year country x year table
-  root.insertAdjacentHTML('beforeend', `<div class="sec-hdr">Major Exporters — 10-Year Country Breakout</div>`);
-  root.insertAdjacentHTML('beforeend', panelWrap('ACRES', 'Exporters — 1000 acres',
-    buildMetricByCountryTable(expList, countries, years10, 'ah')));
-  root.insertAdjacentHTML('beforeend', panelWrap('PRODUCTION', 'Exporters — ' + unitLabel(),
-    buildMetricByCountryTable(expList, countries, years10, 'pr')));
-  root.insertAdjacentHTML('beforeend', panelWrap('EXPORTS', 'Exporters — ' + unitLabel(),
-    buildMetricByCountryTable(expList, countries, years10, 'ex')));
-
-  // Importers: Production / Imports / Ending Stocks, same layout
-  root.insertAdjacentHTML('beforeend', `<div class="sec-hdr">Major Importers — 10-Year Country Breakout</div>`);
-  root.insertAdjacentHTML('beforeend', panelWrap('PRODUCTION', 'Importers — ' + unitLabel(),
-    buildMetricByCountryTable(impList, countries, years10, 'pr')));
-  root.insertAdjacentHTML('beforeend', panelWrap('IMPORTS', 'Importers — ' + unitLabel(),
-    buildMetricByCountryTable(impList, countries, years10, 'im')));
-  root.insertAdjacentHTML('beforeend', panelWrap('ENDING STOCKS', 'Importers — ' + unitLabel(),
-    buildMetricByCountryTable(impList, countries, years10, 'es')));
+  return `<table class="bal-table"><thead><tr><th>WEEK</th><th>EXPORTS</th><th>DOM. DISAPP.</th><th>${g.crush}</th><th>STOCKS</th><th>DELIVERIES</th><th>TERM. RECEIPTS</th></tr></thead><tbody>${r}</tbody></table>`;
+}
+function cgcNotes(){
+  return `<ul class="notes">
+  <li><b>Source:</b> CGC Grain Statistics Weekly (licensed facilities), 1000 MT. Numbers match CGC's weekly Excel Summary tab.</li>
+  <li><b>Exports:</b> port terminals + direct from country elevators + producer cars to the US.</li>
+  <li><b>Domestic disappearance:</b> processor use (crush / milling) + shipments to Canadian domestic users.</li>
+  <li><b>Stocks:</b> commercial stocks at country, process and port elevators (not on-farm).</li>
+  <li><b>Deliveries:</b> farmer deliveries to country and process elevators + producer cars.</li>
+  <li><b>vs avg:</b> average of the prior ${hist().length} crop years (${hist().map(label).join(', ')}) at the same grain week.</li>
+  <li><b>Seasonal pace:</b> where the year ends if the rest of it follows the normal seasonal pattern. Range = same calc using each past year on its own. Pace, not a forecast.</li>
+  <li>Wheat excludes durum.</li>
+  </ul>`;
 }
 
-function initToggles(){
-  const ct = document.getElementById('comm-toggle');
-  ct.innerHTML = COMMS.map(c=>`<button class="tbtn${c===currentComm?' active':''}" data-c="${c}">${c==='Rapeseed/Canola'?'Canola':c}</button>`).join('');
-  ct.querySelectorAll('.tbtn').forEach(b=>b.addEventListener('click',()=>{
-    currentComm = b.dataset.c;
-    ct.querySelectorAll('.tbtn').forEach(x=>x.classList.toggle('active', x===b));
-    render();
-  }));
+/* =========================================================== chart helpers */
+function ds(lbl,data,color,dash,width){ return {label:lbl, data, borderColor:color, backgroundColor:color, borderDash:dash||[], borderWidth:width||1.75, pointRadius:0, tension:.15, spanGaps:true}; }
+function chartOpts(stacked){
+  const F="'Courier New',monospace", grid={color:css('--grid')}, tick={color:css('--text3'),font:{family:F,size:12,weight:'bold'}};
+  return {responsive:true, maintainAspectRatio:false, animation:false, interaction:{mode:'index',intersect:false},
+    plugins:{legend:{labels:{color:css('--text2'),boxWidth:12,font:{family:F,size:12,weight:'bold'}, filter:i=>!/^range/.test(i.text)}},
+      tooltip:{filter:i=>!/^range/.test(i.dataset.label), titleFont:{family:F}, bodyFont:{family:F},
+        callbacks:{title:t=>'Week '+t[0].label, label:c=>`${c.dataset.label}: ${fmt(c.parsed.y)}`}}},
+    scales:{x:{stacked:!!stacked,grid,ticks:{...tick,maxTicksLimit:14},title:{display:true,text:'GRAIN WEEK',color:css('--text3'),font:{family:F,size:11,weight:'bold'}}},
+            y:{stacked:!!stacked,grid,ticks:{...tick,callback:v=>v.toLocaleString()}}}};
+}
+function lineChart(id,labels,datasets){ return new Chart(document.getElementById(id),{type:'line',data:{labels,datasets},options:chartOpts()}); }
 
-  const ut = document.getElementById('unit-toggle');
-  ut.querySelectorAll('.tbtn').forEach(b=>{
-    b.classList.toggle('active', b.dataset.u===currentUnit);
-    b.addEventListener('click', ()=>{
-      currentUnit = b.dataset.u;
-      ut.querySelectorAll('.tbtn').forEach(x=>x.classList.toggle('active', x===b));
-      render();
-    });
-  });
-}
-
-// ---- "Data as of": when the underlying numbers are from (the header's "Last updated" is only when the pipeline ran) ----
-function parseAnyDate(s){
-  if(!s) return null;
-  s = String(s).trim();
-  let m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);                 // 2026-10-13
-  if(m) return new Date(Date.UTC(+m[1], +m[2]-1, +m[3]));
-  m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(s);               // 10/08/2026
-  if(m) return new Date(Date.UTC(+m[3], +m[1]-1, +m[2]));
-  return null;
-}
-function fmtAsOfDate(d, withWeekday){
-  const o = {month:'short', day:'numeric', timeZone:'UTC'};
-  if(withWeekday) o.weekday = 'short';
-  return d.toLocaleDateString('en-US', o);
-}
-// CFTC: each history row's date is the Tuesday the positions are "as of" (the report itself comes out that Friday)
-function latestCftcDate(){
-  if(!CFTC_DATA || !CFTC_DATA.codes) return null;
-  let best = null;
-  Object.values(CFTC_DATA.codes).forEach(c=>{
-    const h = c.history;
-    const d = (h && h.length) ? parseAnyDate(h[h.length-1].date) : null;
-    if(d && (!best || d > best)) best = d;
-  });
-  return best;
-}
-// Export Sales: the week-ending date of the latest weekly report
-function latestExportsDate(){
-  if(!EXPORTS_DATA || !EXPORTS_DATA.commodities) return null;
-  let best = null;
-  Object.values(EXPORTS_DATA.commodities).forEach(c=>{
-    const d = parseAnyDate(c && c.total && c.total.period_ending);
-    if(d && (!best || d > best)) best = d;
-  });
-  return best;
-}
-// USDA: the WASDE release the pulled PSD numbers reflect (worked out by fetch_psd.py from USDA's release schedule).
-// Coffee and Sugar are on USDA's semi-annual reports instead of the monthly WASDE.
-function usdaAsOfText(comm){
-  if(comm === 'Coffee' || comm === 'Sugar') return 'USDA estimates: semi-annual report';
-  const d = parseAnyDate(DATA && DATA._meta && DATA._meta.wasde_release);
-  const pd = parseAnyDate(DATA && DATA._prior && DATA._prior.release);
-  return d ? 'USDA estimates: ' + fmtAsOfDate(d, false) + ' WASDE' + (pd ? ' (prior: ' + fmtAsOfDate(pd, false) + ')' : '') : '';
-}
-// Header block: line 1 = when the pipeline last ran, line 2 = what date the data itself is from
-function setMetaLines(id, runStamp, asOfText){
-  const el = document.getElementById(id);
-  if(!el) return;
-  const esc = t => String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  el.style.textAlign = 'right';
-  el.style.lineHeight = '1.5';
-  el.innerHTML = 'Last updated: ' + esc(runStamp || 'unknown') +
-    (asOfText ? '<br><span style="color:var(--text2)">' + esc(asOfText) + '</span>' : '');
-}
-function updateUsdaMeta(){ setMetaLines('meta', DATA && DATA._meta && DATA._meta.fetched_at, usdaAsOfText(currentComm)); }
-
-fetch('data/psd_data.json?_=' + Date.now())
-  .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-  .then(data=>{
-    DATA = data;
-    attachPrior(DATA);
-    updateUsdaMeta();
-    initToggles();
-    render();
-    usdaReady = true;
-    if(typeof checkSummaryReady === 'function') checkSummaryReady();
-  })
-  .catch(e=>{
-    document.getElementById('root').innerHTML = `<div id="err">Error loading data: ${e.message}</div>`;
-  });
-</script>
-
-<style>
-.cftc-table{width:100%;table-layout:fixed;border-collapse:collapse;border:1px solid var(--border2);background:var(--bg)}
-.cftc-table th{background:var(--th-bg);padding:7px 4px;text-align:right;font-size:12.5px;font-weight:900;letter-spacing:.03em;color:var(--text);border-bottom:2px solid var(--border2);white-space:nowrap;overflow:hidden}
-.cftc-table th:first-child{text-align:left}
-.cftc-row-section td{background:var(--section-bg);color:var(--amber) !important;font-size:13px !important;font-weight:900 !important;letter-spacing:.16em;text-transform:uppercase;padding:8px 10px 6px;border-top:2px solid var(--amber)}
-.cftc-table td{padding:4px 4px;text-align:right;font-size:13px;font-weight:600;border-bottom:1px solid var(--border);color:var(--text2);white-space:nowrap;background:var(--bg);overflow:hidden;text-overflow:ellipsis}
-.cftc-table td:first-child{text-align:left;color:var(--text);font-weight:700}
-.cftc-note{margin-left:12px;font-size:11px !important;font-weight:600 !important;letter-spacing:.04em !important;text-transform:none !important;color:var(--text3) !important}
-.cftc-scale{transform-origin:0 0}
-.cftc-table tr.cftc-click{cursor:pointer}
-.cftc-table tr.cftc-click:hover td{background-image:linear-gradient(rgba(128,128,128,.10),rgba(128,128,128,.10))}
-.cftc-table tr.cftc-sel td{background-image:linear-gradient(rgba(245,166,35,.13),rgba(245,166,35,.13))}
-.cftc-table tr.cftc-sel td:first-child{box-shadow:inset 3px 0 0 var(--amber);color:var(--amber)}
-#cftc-chart{margin-top:30px;border-top:2px solid var(--amber);padding-top:14px}
-.cftc-chart-hdr{display:flex;flex-wrap:wrap;align-items:center;gap:14px 24px;margin-bottom:12px}
-.cftc-chart-title{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:900;color:var(--text);letter-spacing:.04em}
-.cftc-chart-title small{display:block;font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.04em}
-.cftc-chart-title .tbtn{border:1px solid var(--border2);border-radius:3px;padding:4px 10px;font-size:12px}
-.cftc-legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:11px;color:var(--text3);margin-left:auto}
-.cftc-legend i{display:inline-block;vertical-align:middle;margin-right:6px}
-.cftc-legend .lg-line{width:18px;height:0;border-top:2px solid var(--amber)}
-.cftc-legend .lg-bar{width:11px;height:11px}
-.cftc-legend .lg-g{background:rgba(46,143,82,.35)}
-.cftc-legend .lg-r{background:rgba(192,57,43,.35)}
-.cftc-legend .lg-dash{width:18px;height:0;border-top:1.5px dashed var(--ref-color)}
-.rf{display:inline-block;min-width:66px;text-align:right}
-.rp{display:inline-block;min-width:44px;margin-left:6px;text-align:right;font-size:10px;font-weight:600;opacity:.85}
-.cftc-table td.cftc-ref{color:var(--ref-color);font-style:italic;font-weight:600;background:var(--ref-bg)}
-.cftc-table th.cftc-ref-h{color:var(--ref-color) !important;font-style:italic;background:var(--ref-bg)}
-.cftc-ref-sub{display:block;font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:none}
-.gf{display:inline-block;min-width:62px;text-align:right}
-.gc{display:inline-block;min-width:50px;margin-left:6px;text-align:right;font-size:10.5px;font-weight:700}
-.cftc-up{color:var(--green) !important}
-.cftc-dn{color:var(--red) !important}
-.cftc-extreme-hi{background:rgba(46,143,82,.22) !important;font-weight:800 !important}
-.cftc-extreme-lo{background:rgba(184,56,56,.22) !important;font-weight:800 !important}
-.cftc-extreme-yellow{background:rgba(230,180,20,.32) !important;font-weight:800 !important}
-#cftc-err{padding:40px;text-align:center;color:var(--red);font-size:14px}
-.cal-table{width:100%;min-width:1000px;table-layout:fixed;border-collapse:collapse;border:1px solid var(--border2);background:var(--bg)}
-.weather-table{width:100%;min-width:1000px;table-layout:fixed;border-collapse:collapse;border:1px solid var(--border2);background:var(--bg)}
-.weather-table th{background:var(--th-bg);padding:7px 6px;text-align:right;font-size:12px;font-weight:900;letter-spacing:.02em;color:var(--text);border-bottom:2px solid var(--border2);white-space:nowrap}
-.weather-table th:first-child{text-align:left}
-.weather-table td{padding:5px 6px;text-align:right;font-size:13px;font-weight:600;border-bottom:1px solid var(--border);color:var(--text2);white-space:nowrap;background:var(--bg)}
-.weather-table td:first-child{text-align:left;color:var(--text);font-weight:700}
-.summary-table{width:100%;min-width:1080px;table-layout:fixed;border-collapse:collapse;border:1px solid var(--border2);background:var(--bg)}
-/* group divider: the first column of each group gets a heavier left line, running the full height of the table */
-.grp-l{border-left:2px solid var(--grp-line)}
-.summary-table th{background:var(--th-bg);padding:7px 6px;text-align:right;font-size:12.5px;font-weight:900;letter-spacing:.03em;color:var(--text);border-bottom:2px solid var(--border2);white-space:nowrap}
-.summary-table th:first-child{text-align:left}
-.summary-table td{padding:5px 6px;text-align:right;font-size:13px;font-weight:600;border-bottom:1px solid var(--border);color:var(--text2);white-space:nowrap;background:var(--bg)}
-.summary-table td:first-child{text-align:left;color:var(--text);font-weight:700;white-space:nowrap}
-.cal-table th{background:var(--th-bg);padding:7px 6px;text-align:center;font-size:12px;font-weight:900;letter-spacing:.03em;color:var(--text);border-bottom:2px solid var(--border2);white-space:nowrap}
-.cal-table th:first-child{text-align:left}
-.cal-table td{padding:5px 6px;text-align:center;font-size:12px;font-weight:600;border-bottom:1px solid var(--border);color:var(--text2);white-space:nowrap;background:var(--bg)}
-.cal-table td:first-child{text-align:left;color:var(--text);font-weight:700;white-space:nowrap}
-.cal-cur-month{box-shadow:inset 0 0 0 2px var(--amber) !important}
-th.cal-cur-month{color:var(--amber) !important}
-</style>
-<script>
-const CFTC_GROUPS = [
-  {label:"Grains", codes:[
-    {code:"002602", label:"Corn"},
-    {code:"001602", label:"Wheat (Chicago SRW)"},
-    {code:"001612", label:"Wheat (KC HRW)"},
-    {code:"001626", label:"Wheat (Mpls Spring)"},
-  ]},
-  {label:"Oilseeds", codes:[
-    {code:"135731", label:"Canola"},
-    {code:"005602", label:"Soybeans"},
-    {code:"007601", label:"Soybean Oil"},
-    {code:"026603", label:"Soybean Meal"},
-  ]},
-  {label:"Meats", codes:[
-    {code:"061641", label:"Feeder Cattle"},
-    {code:"057642", label:"Live Cattle"},
-    {code:"054642", label:"Lean Hogs"},
-  ]},
-  {label:"Softs", codes:[
-    {code:"073732", label:"Cocoa"},
-    {code:"083731", label:"Coffee"},
-    {code:"033661", label:"Cotton"},
-    {code:"080732", label:"Sugar"},
-  ]},
-  {label:"Energies", codes:[
-    {code:"067651", label:"Crude Oil (WTI)"},
-    {code:"022651", label:"Heating Oil"},
-    {code:"111659", label:"RBOB Gasoline"},
-    {code:"023651", label:"Natural Gas"},
-  ]},
-  {label:"Metals", codes:[
-    {code:"088691", label:"Gold"},
-    {code:"084691", label:"Silver"},
-    {code:"085692", label:"Copper"},
-  ]},
-  // Financial futures come from CFTC's separate TFF report, which has no "Managed Money": Leveraged Funds is the closest equivalent.
-  {label:"Currencies", note:"Leveraged Funds", codes:[
-    {code:"098662", label:"US Dollar Index"},
-    {code:"099741", label:"Euro"},
-    {code:"097741", label:"Japanese Yen"},
-    {code:"096742", label:"British Pound"},
-    {code:"090741", label:"Canadian Dollar"},
-    {code:"232741", label:"Australian Dollar"},
-    {code:"092741", label:"Swiss Franc"},
-  ]},
-  {label:"Equities", note:"Leveraged Funds", codes:[
-    {code:"13874A", label:"S&P 500 (E-mini)"},
-  ]},
-  {label:"Treasuries", note:"Leveraged Funds", codes:[
-    {code:"042601", label:"2-Yr T-Note"},
-    {code:"044601", label:"5-Yr T-Note"},
-    {code:"043602", label:"10-Yr T-Note"},
-    {code:"043607", label:"Ultra 10-Yr T-Note"},
-    {code:"020601", label:"T-Bond (30-Yr)"},
-    {code:"020604", label:"Ultra T-Bond"},
-  ]},
+/* =========================================================== S&D page */
+const SD_ROWS = [
+  {k:'ac_harv', n:'Area harvested (1000 ac)', d:0},
+  {k:'bu_ac',   n:'Yield (bu/ac)', d:1},
+  {sec:'SUPPLY'},
+  {k:'beg',  n:'Beginning stocks'},
+  {k:'prod', n:'Production'},
+  {k:'imp',  n:'Imports'},
+  {k:'supply', n:'Total supply', cls:'row-total'},
+  {sec:'USE'},
+  {k:'exp', n:'Exports'},
+  {k:'fi',  n:'FI'},
+  {k:'fwd', n:'Feed, waste & dockage'},
+  {k:'seed_other', n:'Seed & other'},
+  {k:'dom', n:'Total domestic use', cls:'row-total'},
+  {k:'total_use', n:'Total demand', cls:'row-total'},
+  {sec:'BALANCE'},
+  {k:'end', n:'Ending stocks', cls:'row-ending'},
+  {k:'su',  n:'Stocks / Use %', cls:'row-stu', pctv:true},
+  {k:'_rank', n:'S/U Percentile Rank', cls:'row-pctile'},
+  {sec:'PRICE'},
+  {k:'price', n:'AAFC avg price ($/t)', d:0},
 ];
 
-let CFTC_DATA = null;
-let cftcLoaded = false;
-let usdaReady = false;
-let cftcReady = false;
-let exportsReady = false;
-let WEATHER_DATA = null;
-let weatherState = 'loading';   // 'loading' | 'ready' | 'failed' - only the Weather page cares
-function checkSummaryReady(){
-  if(usdaReady && cftcReady && exportsReady && typeof renderSummary === 'function') renderSummary();
-}
+function renderSD(g){
+  document.getElementById('title').textContent = 'Canadian Balance Sheets';
+  const root = document.getElementById('root');
+  if (!S){ document.getElementById('meta').textContent=''; root.innerHTML='<div id="err">Could not load data/sd.json — run the GitHub Action once.</div>'; return; }
+  document.getElementById('meta').innerHTML =
+    `AAFC Outlook ${fdate(S.aafc.date)} (prior ${sdate(S.aafc.prior_date)}) · StatsCan final through ${S.statcan_latest}<br>
+     <span class="ok" title="Every balance sheet shown adds up: beginning + production + imports = supply = exports + domestic + ending">✓ ${S.checks.sheets} BALANCE SHEETS VERIFIED</span> · updated ${S.updated.replace('T',' ').slice(0,16)} UTC · <a href="${S.aafc.url}" target="_blank">AAFC</a>`;
+  const ageDays = Math.floor((Date.now() - new Date(S.aafc.date+'T12:00:00'))/864e5);
+  if (ageDays > 40) document.getElementById('banner').innerHTML = `<div>⚠ AAFC OUTLOOK IS ${ageDays} DAYS OLD — a newer monthly report should exist; check the repo's Actions tab.</div>`;
 
-fetch('data/weather_data.json?_=' + Date.now())
-  .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-  .then(data=>{
-    WEATHER_DATA = data;
-    weatherState = 'ready';
-    if(typeof renderWeatherPage === 'function') renderWeatherPage();
-  })
-  .catch(e=>{
-    weatherState = 'failed';
-    if(typeof renderWeatherPage === 'function') renderWeatherPage();
-  });
+  const C = S.crops[g.k], Y = C.years, fc = C.forecast_year, P = C.prior;
+  const statYears = Object.keys(Y).filter(cy=>Y[cy].src==='StatsCan');
+  const estYears  = C.aafc_years.filter(cy=>cy!==fc && Y[cy].src==='AAFC');
+  const cols = [...statYears.slice(-5), ...estYears, fc];
+  const prevCy = cy => { const s=+cy.slice(0,4)-1; return `${s}-${s+1}`; };
 
-function cftcFmt(v){ return (v===null||v===undefined||isNaN(v)) ? '—' : Math.round(v).toLocaleString(); }
-function cftcPct(v){ return (v===null||v===undefined||isNaN(v)) ? '—' : v.toFixed(1)+'%'; }
-function cftcSignedPct(v, dec){
-  if(v===null||v===undefined||isNaN(v)) return '—';
-  const s = v>=0?'+':'';
-  return s+v.toFixed(dec===undefined?1:dec)+'%';
-}
-function cftcSignedNum(v){
-  if(v===null||v===undefined||isNaN(v)) return '—';
-  const s = v>=0?'+':'';
-  return s+Math.round(v).toLocaleString();
-}
-function cftcOrdinal(n){
-  const r = Math.round(n), mod100 = r%100;
-  if(mod100>=11 && mod100<=13) return r+'th';
-  switch(r%10){case 1:return r+'st';case 2:return r+'nd';case 3:return r+'rd';default:return r+'th';}
-}
+  const suHist = statYears.map(cy=>Y[cy].su).filter(x=>x!=null);
+  const rank = su => su==null ? null : Math.round(100 * suHist.filter(x=>x<=su).length / suHist.length);
+  const rankCell = (su, sep) => { const r=rank(su); if (r==null) return `<td${sep?' class="sep"':''}>–</td>`;
+    const c = r<=25?'pctile-tight':r>=75?'pctile-loose':'pctile-mid'; return `<td class="${c}${sep?' sep':''}">${ordinal(r)}</td>`; };
 
-function computeRow(hist, i){
-  const h = hist[i];
-  const oi = h.oi, mmL = h.mm_long, mmS = h.mm_short;
-  const net = (mmL!==null && mmS!==null) ? mmL-mmS : null;
-  const netPctOi = (net!==null && oi) ? net/oi*100 : null;
-  const grossLPctOi = (mmL!==null && oi) ? mmL/oi*100 : null;
-  const grossSPctOi = (mmS!==null && oi) ? mmS/oi*100 : null;
-  let weeklyChange = null;
-  if(i>0){
-    const prev = hist[i-1];
-    if(prev.mm_long!==null && prev.mm_short!==null && mmL!==null && mmS!==null){
-      weeklyChange = net - (prev.mm_long - prev.mm_short);
-    }
-  }
-  // Change in gross longs / shorts vs the prior weekly report (did funds add to, or cut, each side)
-  let grossLChg = null, grossSChg = null;
-  if(i>0){
-    const prev = hist[i-1];
-    if(prev.mm_long!==null && mmL!==null) grossLChg = mmL - prev.mm_long;
-    if(prev.mm_short!==null && mmS!==null) grossSChg = mmS - prev.mm_short;
-  }
-  return {oi, oiChg:h.oi_chg, mmL, mmS, net, netPctOi, grossLPctOi, grossSPctOi, weeklyChange, grossLChg, grossSChg};
-}
+  const PS = paceSheet(g, C);
+  const nExtra = 4;
+  const head = `<tr><th>ITEM</th>${cols.map(cy=>`<th class="${cy===fc?'latest':''}">${label(cy)}${cy===fc?' f':(estYears.includes(cy)?' e':'')}</th>`).join('')}
+    <th class="yoy">YoY Δ</th><th class="prior sep">Prior ${sdate(S.aafc.prior_date)}</th><th class="prior">Chg</th>
+    ${PS?`<th class="gap"></th><th class="pc" title="${label(fc)} AAFC balance sheet with the rows CGC tracks swapped for the CGC weekly seasonal pace">${label(fc)} @ CGC PACE</th><th class="pc">vs f</th>`:''}</tr>`;
 
-function computeLatestMetrics(entry, hist){
-  if(!hist || !hist.length) return null;
-  const rows = hist.map((h,i)=>computeRow(hist,i));
-  const latest = rows[rows.length-1];
-  const netHistory = rows.map(r=>r.netPctOi).filter(v=>v!==null);
-  const glHistory = rows.map(r=>r.grossLPctOi).filter(v=>v!==null);
-  const gsHistory = rows.map(r=>r.grossSPctOi).filter(v=>v!==null);
-
-  function pctileOf(v, arr){
-    if(v===null || !arr.length) return null;
-    return arr.filter(x=>x<=v).length/arr.length*100;
-  }
-  // Largest positions seen over the whole history window: in contracts, and as a share of open interest (each is
-  // its own maximum, so they can fall on different dates), with the report date they were set.
-  const ext = {maxNetLong:null, maxNetShort:null, maxGrossLong:null, maxGrossShort:null,
-               maxNetLongPct:null, maxNetShortPct:null, maxGrossLongPct:null, maxGrossShortPct:null};
-  const hi = (cur, v, date)=> (cur===null || v>cur.v) ? {v, date} : cur;
-  const lo = (cur, v, date)=> (cur===null || v<cur.v) ? {v, date} : cur;
-  rows.forEach((r,i)=>{
-    const date = hist[i].date;
-    if(r.net!==null){ ext.maxNetLong = hi(ext.maxNetLong, r.net, date); ext.maxNetShort = lo(ext.maxNetShort, r.net, date); }
-    if(r.mmL!==null) ext.maxGrossLong = hi(ext.maxGrossLong, r.mmL, date);
-    if(r.mmS!==null) ext.maxGrossShort = hi(ext.maxGrossShort, r.mmS, date);
-    if(r.netPctOi!==null){ ext.maxNetLongPct = hi(ext.maxNetLongPct, r.netPctOi, date); ext.maxNetShortPct = lo(ext.maxNetShortPct, r.netPctOi, date); }
-    if(r.grossLPctOi!==null) ext.maxGrossLongPct = hi(ext.maxGrossLongPct, r.grossLPctOi, date);
-    if(r.grossSPctOi!==null) ext.maxGrossShortPct = hi(ext.maxGrossShortPct, r.grossSPctOi, date);
-  });
-  return {
-    ...latest,
-    netPctile: pctileOf(latest.netPctOi, netHistory),
-    glPctile: pctileOf(latest.grossLPctOi, glHistory),
-    gsPctile: pctileOf(latest.grossSPctOi, gsHistory),
-    ...ext,
-  };
-}
-
-// What a week's change in the net position (contracts) means given the side the funds are on
-function posActionText(net, chg){
-  if(net===null || chg===null || chg===undefined) return '';
-  if(chg===0) return 'unchanged';
-  if(net>=0) return chg>0 ? 'adding to longs' : 'unwinding longs';
-  return chg<0 ? 'adding to shorts' : 'covering shorts';
-}
-
-function extremeClass(p){
-  if(p===null || p===undefined) return '';
-  if(p>=90) return 'cftc-extreme-hi';
-  if(p<=10) return 'cftc-extreme-lo';
-  return '';
-}
-// Net % of OI: high percentile = crowded long (flag red), low percentile = crowded short (flag green)
-function netExtremeClass(p){
-  if(p===null || p===undefined) return '';
-  if(p>=90) return 'cftc-extreme-lo';   // red
-  if(p<=10) return 'cftc-extreme-hi';   // green
-  return '';
-}
-// Gross long/short % of OI: only flag unusually LARGE positions, in yellow. Small positions aren't flagged.
-function grossExtremeClass(p){
-  if(p===null || p===undefined) return '';
-  if(p>=90) return 'cftc-extreme-yellow';
-  return '';
-}
-
-// Chart state: which contract is selected (click a row), contracts vs % of OI, and how many years to show
-let cftcSelected = null;
-let cftcChartMode = 'contracts';   // 'contracts' | 'pct'
-let cftcChartYears = 2;
-
-const CFTC_COL_GROUPS = [
-  {label:'Position', cols:['Net Position','Wkly Chg']},
-  {label:'Net Exposure', cols:['Net % OI','Pctile']},
-  {label:'Gross Positions', cols:['Gross Long','Gross Short']},
-  {label:'Open Interest', cols:['OI','OI Chg']},
-  // Reference only (not part of the live positioning): the largest positions seen over the history window, in contracts.
-  {label:'Historical Max', ref:true, cols:['Net Long','Net Short','Gross Long','Gross Short']},
-];
-
-// Gross long/short cell: the figure, with the week's change small beside it.
-// Colour = sign of the change, same for longs and shorts: added = green, cut = red.
-function cftcGrossCell(val, chg, isShort){
-  let chgHtml = '<span class="gc"></span>';
-  if(chg!==null && chg!==undefined && !isNaN(chg)){
-    const r = Math.round(chg);
-    const cls = r===0 ? '' : (r>0 ? 'cftc-up' : 'cftc-dn');
-    chgHtml = `<span class="gc ${cls}" title="${isShort?'Shorts':'Longs'} ${r>0?'added':(r<0?'cut':'unchanged')} vs prior week">${r===0?'0':cftcSignedNum(r)}</span>`;
-  }
-  return `<span class="gf">${cftcFmt(val)}</span>${chgHtml}`;
-}
-
-function buildCftcRow(entry, hist){
-  const m = computeLatestMetrics(entry, hist);
-  let html = m
-    ? `<tr class="cftc-click${entry.code===cftcSelected?' cftc-sel':''}" data-code="${entry.code}" title="Click to chart"><td>${entry.label}</td>`
-    : `<tr><td>${entry.label}</td>`;
-  if(!m){
-    html += `<td class="grp-l" colspan="12" style="text-align:left;color:var(--text3)">No data (code ${entry.code})</td>`;
-  } else {
-    html += `<td class="grp-l ${m.net>=0?'cftc-up':'cftc-dn'}">${cftcFmt(m.net)}</td>`;
-    html += `<td class="${m.weeklyChange>=0?'cftc-up':'cftc-dn'}">${cftcSignedNum(m.weeklyChange)}</td>`;
-    html += `<td class="grp-l ${m.netPctOi>=0?'cftc-up':'cftc-dn'}">${cftcPct(m.netPctOi)}</td>`;
-    html += `<td class="${netExtremeClass(m.netPctile)}">${m.netPctile===null?'—':cftcOrdinal(m.netPctile)}</td>`;
-    // gross long / short: yellow when unusually large vs the lookback; hover for the position as a share of open interest
-    const yrs = CFTC_DATA._meta?.years_history;
-    const grossTip = (what, v, pctOi, pctile)=> `${what}: ${cftcFmt(v)} contracts = ${cftcPct(pctOi)} of open interest` + (pctile===null||pctile===undefined ? '' : ` · ${cftcOrdinal(pctile)} percentile${yrs ? ' of the '+yrs+'-yr window' : ''}`);
-    html += `<td class="grp-l ${grossExtremeClass(m.glPctile)}" title="${grossTip('Gross long', m.mmL, m.grossLPctOi, m.glPctile)}">${cftcGrossCell(m.mmL, m.grossLChg, false)}</td>`;
-    html += `<td class="${grossExtremeClass(m.gsPctile)}" title="${grossTip('Gross short', m.mmS, m.grossSPctOi, m.gsPctile)}">${cftcGrossCell(m.mmS, m.grossSChg, true)}</td>`;
-    html += `<td class="grp-l">${cftcFmt(m.oi)}</td>`;
-    html += `<td class="${m.oiChg>=0?'cftc-up':'cftc-dn'}">${cftcSignedNum(m.oiChg)}</td>`;
-    // historical extremes (reference columns, styled differently so they don't read as part of the live table)
-    // each shows the largest position in contracts; the net maxes also show the largest share of open interest in small
-    // type (the gross maxes keep theirs in the hover text only)
-    [['maxNetLong','maxNetLongPct','Largest net long', true],['maxNetShort','maxNetShortPct','Largest net short', true],
-     ['maxGrossLong','maxGrossLongPct','Largest gross long', false],['maxGrossShort','maxGrossShortPct','Largest gross short', false]].forEach(([k, kp, what, showPct], i)=>{
-      const e = m[k], ep = m[kp];
-      const tip = e ? `${what}: ${cftcFmt(e.v)} contracts, set ${e.date}` + (ep ? ` · largest % of OI: ${cftcPct(ep.v)}, set ${ep.date}` : '') : '';
-      html += `<td class="cftc-ref${i===0?' grp-l':''}"${tip?` title="${tip}"`:''}><span class="rf">${e ? cftcFmt(e.v) : '—'}</span>${showPct ? `<span class="rp">${ep ? cftcPct(ep.v) : ''}</span>` : ''}</td>`;
+  let body = '';
+  for (const r of SD_ROWS){
+    if (r.sec){ body += `<tr class="row-section"><td colspan="${cols.length+nExtra}">${r.sec}</td>${PS?'<td class="gap"></td><td class="pc same" colspan="2"></td>':''}</tr>`; continue; }
+    const name = r.k==='fi' ? g.fi : (r.k==='_rank' ? `S/U Percentile Rank (${suHist.length}yr hist)` : r.n);
+    const d = r.d!=null ? r.d : (r.pctv?1:0);
+    const show = v => v==null ? '–' : (r.pctv ? fmt(v,1)+'%' : fmt(v,d));
+    let cells = '';
+    cols.forEach((cy,i)=>{
+      if (r.k==='_rank'){ cells += rankCell(Y[cy].su); return; }
+      const v = Y[cy][r.k], pv = i>0 ? Y[cols[i-1]][r.k] : null;
+      let cls = cy===fc ? 'latest' : '';
+      if (!cls && !r.cls && v!=null && pv!=null) cls = v>pv ? 'up' : (v<pv ? 'dn' : '');
+      cells += `<td class="${cls}">${show(v)}</td>`;
     });
-  }
-  html += `</tr>`;
-  return html;
-}
-
-// How spare width is shared out (each column is already sized to fit its content): Product, Net Pos, Wkly Chg, Net%OI,
-// Pctile, Gross Long, Gross Short, OI, OI Chg, then the 4 Historical Max columns - which get very little, so that
-// reference section stays compact instead of stretching.
-const CFTC_COL_WIDTHS = [12, 9, 8, 8, 7, 14, 14, 9, 8, 2.75, 2.75, 2.75, 2.75];
-function buildCftcMasterTable(){
-  const yrs = CFTC_DATA._meta?.years_history;
-  let html = `<div class="tbl-wrap"><div class="cftc-scale"><table class="cftc-table"><colgroup>${CFTC_COL_WIDTHS.map(w=>`<col style="width:${w}%">`).join('')}</colgroup><thead>`;
-  html += `<tr><th rowspan="2">Product</th>`;
-  CFTC_COL_GROUPS.forEach(g=>{
-    const label = g.ref ? `${g.label}<span class="cftc-ref-sub">${yrs ? yrs+'yr · ' : ''}contracts</span>` : g.label;
-    html += `<th colspan="${g.cols.length}" class="grp-l${g.ref?' cftc-ref-h':''}" style="text-align:center;${g.ref?'':'color:var(--amber);'}font-size:13px;letter-spacing:.08em">${label}</th>`;
-  });
-  html += `</tr><tr>`;
-  CFTC_COL_GROUPS.forEach(g=>{
-    g.cols.forEach((c,i)=>{ html += `<th class="${i===0?'grp-l ':''}${g.ref?'cftc-ref-h':''}">${c}</th>`; });
-  });
-  html += `</tr></thead><tbody>`;
-
-  CFTC_GROUPS.forEach(group=>{
-    html += `<tr class="cftc-row-section"><td colspan="13">${group.label}${group.note ? `<span class="cftc-note">${group.note}</span>` : ''}</td></tr>`;
-    group.codes.forEach(entry=>{
-      const hist = (CFTC_DATA.codes && CFTC_DATA.codes[entry.code]) ? CFTC_DATA.codes[entry.code].history : null;
-      html += buildCftcRow(entry, hist);
-    });
-  });
-  html += `</tbody></table></div></div>`;
-  return html;
-}
-
-// ---------------- CFTC CHART ----------------
-// Click a row in the table and the chart below shows that contract: net position as a line, gross long as a faded green
-// histogram, gross short as a faded red histogram hanging below zero, and the historical maxima as faint dashed lines.
-function cftcProductList(){
-  const out = [];
-  CFTC_GROUPS.forEach(g=>g.codes.forEach(e=>{
-    const h = CFTC_DATA.codes && CFTC_DATA.codes[e.code] ? CFTC_DATA.codes[e.code].history : null;
-    if(h && h.length) out.push(e);
-  }));
-  return out;
-}
-function cftcSelect(code, scroll){
-  cftcSelected = code;
-  document.querySelectorAll('#cftc-root tr.cftc-click').forEach(tr=>tr.classList.toggle('cftc-sel', tr.dataset.code === code));
-  renderCftcChart();
-  if(scroll){ const box = document.getElementById('cftc-chart'); if(box) box.scrollIntoView({behavior:'smooth', block:'nearest'}); }
-}
-function cftcNiceTicks(lo, hi, n){
-  const span = (hi - lo) || 1, raw = span / n, mag = Math.pow(10, Math.floor(Math.log10(raw))), norm = raw / mag;
-  const step = (norm < 1.5 ? 1 : norm < 3 ? 2 : norm < 7 ? 5 : 10) * mag;
-  const ticks = [];
-  for(let v = Math.ceil(lo / step) * step; v <= hi + step * 1e-9; v += step) ticks.push(Math.abs(v) < step * 1e-9 ? 0 : v);
-  return ticks;
-}
-function cftcAxisFmt(v, pct){
-  if(pct) return v.toFixed(0) + '%';
-  const a = Math.abs(v);
-  return a >= 1e6 ? (v / 1e6).toFixed(1) + 'M' : a >= 1e3 ? Math.round(v / 1e3) + 'k' : String(Math.round(v));
-}
-
-function renderCftcChart(){
-  const box = document.getElementById('cftc-chart');
-  if(!box || !CFTC_DATA || !CFTC_DATA.codes) return;
-  const rec = CFTC_DATA.codes[cftcSelected];
-  if(!rec || !rec.history || !rec.history.length){ box.innerHTML = ''; return; }
-  const pct = cftcChartMode === 'pct';
-  const list = cftcProductList();
-  const entry = list.find(e=>e.code === cftcSelected) || {label: rec.label || cftcSelected};
-  const m = computeLatestMetrics(entry, rec.history);
-
-  // weekly series, in contracts and as % of open interest
-  const full = rec.history.map(h=>{
-    const net = (h.mm_long !== null && h.mm_short !== null) ? h.mm_long - h.mm_short : null, oi = h.oi;
-    return {date:h.date, net, long:h.mm_long, short:h.mm_short,
-      netPct:   (net !== null && oi) ? net / oi * 100 : null,
-      longPct:  (h.mm_long !== null && oi) ? h.mm_long / oi * 100 : null,
-      shortPct: (h.mm_short !== null && oi) ? h.mm_short / oi * 100 : null};
-  });
-  full.forEach((p, i)=>{                      // week-over-week changes, in contracts (null if either week is missing)
-    const q = i > 0 ? full[i - 1] : null, d = (a, b)=> (a !== null && b !== null && q) ? a - b : null;
-    p.chg = q ? d(p.net, q.net) : null; p.dLong = q ? d(p.long, q.long) : null; p.dShort = q ? d(p.short, q.short) : null;
-  });
-  const cut = new Date(full[full.length-1].date + 'T00:00:00Z'); cut.setUTCFullYear(cut.getUTCFullYear() - cftcChartYears);
-  const cutIso = cut.toISOString().slice(0, 10);
-  const kN = pct ? 'netPct' : 'net', kL = pct ? 'longPct' : 'long', kS = pct ? 'shortPct' : 'short';
-  const pts = full.filter(p => p.date >= cutIso && p[kN] !== null && p[kL] !== null && p[kS] !== null);
-
-  const idx = list.findIndex(e=>e.code === cftcSelected);
-  const toggle = (cls, items, active) => `<div class="toggle">${items.map(([v, t])=>`<button class="tbtn ${cls}${String(v)===String(active)?' active':''}" data-v="${v}">${t}</button>`).join('')}</div>`;
-  let html = `<div class="cftc-chart-hdr">
-    <div class="cftc-chart-title"><button class="tbtn cftc-step" data-d="-1" title="Previous product">◀</button>
-      <span>${entry.label}<small>${rec.category || 'Managed Money'}</small></span>
-      <button class="tbtn cftc-step" data-d="1" title="Next product">▶</button></div>
-    ${toggle('cftc-mode', [['contracts','Contracts'], ['pct','% OI'], ['chg','Net chg']], cftcChartMode)}
-    ${toggle('cftc-years', [[1,'1Y'], [2,'2Y'], [5,'5Y'], [10,'10Y']], cftcChartYears)}
-    <div class="cftc-legend">${cftcChartMode === 'chg' ? '<span><i class="lg-bar lg-g"></i>Net buying (net position up on the week)</span><span><i class="lg-bar lg-r"></i>Net selling (net position down)</span>' : `<span><i class="lg-line"></i>Net position</span><span><i class="lg-bar lg-g"></i>Gross long</span><span><i class="lg-bar lg-r"></i>Gross short (shown negative)</span><span><i class="lg-dash"></i>Historical max</span>`}</div>
-  </div>`;
-  if(cftcChartMode === 'chg'){ renderCftcChangeChart(box, html, full, cutIso, idx, list); return; }
-  if(pts.length < 2){
-    box.innerHTML = html + `<div style="padding:30px 0;color:var(--text3)">Not enough history to chart.</div>`;
-    wireCftcChartControls(box, idx, list);
-    return;
-  }
-
-  // historical-max reference lines (full history window, whatever range is on screen)
-  const mx = pct
-    ? [['Max net long', m.maxNetLongPct], ['Max gross long', m.maxGrossLongPct], ['Max net short', m.maxNetShortPct], ['Max gross short', m.maxGrossShortPct]]
-    : [['Max net long', m.maxNetLong], ['Max gross long', m.maxGrossLong], ['Max net short', m.maxNetShort], ['Max gross short', m.maxGrossShort]];
-  const lines = mx.filter(([, o])=>o).map(([name, o])=>({name, v: name === 'Max gross short' ? -o.v : o.v, date:o.date}));
-
-  let lo = 0, hi = 0;
-  pts.forEach(p=>{ lo = Math.min(lo, p[kN], -p[kS]); hi = Math.max(hi, p[kN], p[kL]); });
-  lines.forEach(l=>{ lo = Math.min(lo, l.v); hi = Math.max(hi, l.v); });
-  const pad = (hi - lo) * 0.05 || 1; lo -= pad; hi += pad;
-
-  const W = 1300, H = 430, M = {l:72, r:176, t:14, b:34};
-  const plotW = W - M.l - M.r, plotH = H - M.t - M.b, n = pts.length, step = plotW / n;
-  const bw = Math.max(1, Math.min(step * 0.72, 14));
-  const y = v => M.t + (hi - v) / (hi - lo) * plotH;
-  const cx = i => M.l + (i + 0.5) * step;
-  const fmtV = v => pct ? cftcPct(v) : cftcFmt(v);
-
-  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;max-width:100%;font-family:inherit" role="img">`;
-  cftcNiceTicks(lo, hi, 7).forEach(t=>{
-    svg += `<line x1="${M.l}" x2="${M.l + plotW}" y1="${y(t)}" y2="${y(t)}" style="stroke:var(--border);stroke-width:1"/>`;
-    svg += `<text x="${M.l - 8}" y="${y(t) + 4}" text-anchor="end" style="fill:var(--text3);font-size:11px">${cftcAxisFmt(t, pct)}</text>`;
-  });
-  // gross long (up) and gross short (down) histograms
-  pts.forEach((p, i)=>{
-    const x0 = cx(i) - bw / 2;
-    svg += `<rect x="${x0.toFixed(2)}" y="${y(p[kL]).toFixed(2)}" width="${bw.toFixed(2)}" height="${Math.max(0, y(0) - y(p[kL])).toFixed(2)}" fill="#2e8f52" fill-opacity=".28"/>`;
-    svg += `<rect x="${x0.toFixed(2)}" y="${y(0).toFixed(2)}" width="${bw.toFixed(2)}" height="${Math.max(0, y(-p[kS]) - y(0)).toFixed(2)}" fill="#c0392b" fill-opacity=".28"/>`;
-  });
-  svg += `<line x1="${M.l}" x2="${M.l + plotW}" y1="${y(0)}" y2="${y(0)}" style="stroke:var(--text3);stroke-width:1"/>`;
-  // historical maxima: faint dashed lines, labelled at the right (labels nudged apart if two sit close together)
-  const lab = lines.map(l=>({...l, ly: y(l.v)})).sort((a, b)=>a.ly - b.ly);
-  for(let i = 1; i < lab.length; i++){ if(lab[i].ly - lab[i-1].ly < 13) lab[i].ly = lab[i-1].ly + 13; }
-  lines.forEach(l=>{
-    svg += `<line x1="${M.l}" x2="${M.l + plotW}" y1="${y(l.v)}" y2="${y(l.v)}" style="stroke:var(--ref-color);stroke-opacity:.6;stroke-width:1.2;stroke-dasharray:5 5"/>`;
-  });
-  lab.forEach(l=>{
-    svg += `<text x="${M.l + plotW + 8}" y="${l.ly + 4}" style="fill:var(--ref-color);font-size:10.5px;font-style:italic"><title>${l.name} — set ${l.date}</title>${l.name} ${fmtV(l.v)}</text>`;
-  });
-  // net position line
-  svg += `<polyline fill="none" points="${pts.map((p, i)=>cx(i).toFixed(1) + ',' + y(p[kN]).toFixed(1)).join(' ')}" style="stroke:var(--amber);stroke-width:2;stroke-linejoin:round"/>`;
-  // x axis: a label every few months
-  const every = cftcChartYears <= 1 ? 1 : cftcChartYears <= 2 ? 3 : cftcChartYears <= 5 ? 6 : 12;
-  let lastMi = -1;
-  pts.forEach((p, i)=>{
-    const d = new Date(p.date + 'T00:00:00Z'), mi = d.getUTCFullYear() * 12 + d.getUTCMonth();
-    if(mi % every === 0 && mi !== lastMi){
-      lastMi = mi;
-      svg += `<line x1="${cx(i)}" x2="${cx(i)}" y1="${M.t + plotH}" y2="${M.t + plotH + 5}" style="stroke:var(--text3)"/>`;
-      svg += `<text x="${cx(i)}" y="${H - 12}" text-anchor="middle" style="fill:var(--text3);font-size:11px">${d.toLocaleDateString('en-US', {month:'short', year:'2-digit', timeZone:'UTC'})}</text>`;
-    }
-  });
-  svg += `<g class="cftc-hover" pointer-events="none"></g><rect class="cftc-hit" x="${M.l}" y="${M.t}" width="${plotW}" height="${plotH}" fill="transparent"/></svg>`;
-
-  box.innerHTML = html + svg;
-  wireCftcChartControls(box, idx, list);
-
-  // hover read-out: both units for the week under the cursor
-  const el = box.querySelector('svg'), hit = el.querySelector('.cftc-hit'), g = el.querySelector('.cftc-hover');
-  hit.addEventListener('mousemove', ev=>{
-    const r = el.getBoundingClientRect(), x = (ev.clientX - r.left) * (W / r.width);
-    const i = Math.max(0, Math.min(n - 1, Math.floor((x - M.l) / step))), p = pts[i], X = cx(i);
-    const rows = [
-      new Date(p.date + 'T00:00:00Z').toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric', year:'numeric', timeZone:'UTC'}),
-      `Net          ${cftcFmt(p.net)}  (${cftcPct(p.netPct)} OI)`,
-      `Gross long   ${cftcFmt(p.long)}  (${cftcPct(p.longPct)})`,
-      `Gross short  ${cftcFmt(p.short)}  (${cftcPct(p.shortPct)})`,
-    ];
-    const tw = 268, th = rows.length * 16 + 12, tx = X > M.l + plotW / 2 ? X - tw - 12 : X + 12, ty = M.t + 8;
-    g.innerHTML = `<line x1="${X}" x2="${X}" y1="${M.t}" y2="${M.t + plotH}" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3 3"/>`
-      + `<circle cx="${X}" cy="${y(p[kN])}" r="4" style="fill:var(--amber)"/>`
-      + `<rect x="${tx}" y="${ty}" width="${tw}" height="${th}" rx="3" style="fill:var(--bg);stroke:var(--border2)"/>`
-      + rows.map((t, k)=>`<text x="${tx + 10}" y="${ty + 20 + k * 16}" xml:space="preserve" style="fill:${k === 0 ? 'var(--amber)' : 'var(--text)'};font-size:11.5px;font-weight:${k === 0 ? 800 : 600}">${t.replace(/ /g, '\u00a0')}</text>`).join('');
-  });
-  hit.addEventListener('mouseleave', ()=>{ g.innerHTML = ''; });
-}
-
-// Net-position change: a histogram of the week-over-week change in (gross long - gross short), in contracts.
-// Green = net buying (funds adding longs and/or covering shorts), red = net selling.
-function renderCftcChangeChart(box, headerHtml, full, cutIso, idx, list){
-  const pts = full.filter(p => p.date >= cutIso && p.chg !== null);
-  if(pts.length < 2){
-    box.innerHTML = headerHtml + `<div style="padding:30px 0;color:var(--text3)">Not enough history to chart.</div>`;
-    wireCftcChartControls(box, idx, list);
-    return;
-  }
-  let mx = 0; pts.forEach(p=>{ mx = Math.max(mx, Math.abs(p.chg)); });
-  mx = (mx || 1) * 1.1;
-  const W = 1300, H = 430, M = {l:72, r:30, t:14, b:34};
-  const plotW = W - M.l - M.r, plotH = H - M.t - M.b, n = pts.length, step = plotW / n, bw = Math.max(1, Math.min(step * 0.72, 16));
-  const y = v => M.t + (mx - v) / (2 * mx) * plotH, cx = i => M.l + (i + 0.5) * step;
-  const signed = v => v === null ? '—' : (v > 0 ? '+' : '') + cftcFmt(v);
-  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;max-width:100%;font-family:inherit" role="img">`;
-  cftcNiceTicks(-mx, mx, 8).forEach(t=>{
-    svg += `<line x1="${M.l}" x2="${M.l + plotW}" y1="${y(t)}" y2="${y(t)}" style="stroke:var(--border);stroke-width:1"/>`;
-    svg += `<text x="${M.l - 8}" y="${y(t) + 4}" text-anchor="end" style="fill:var(--text3);font-size:11px">${t > 0 ? '+' : ''}${cftcAxisFmt(t, false)}</text>`;
-  });
-  pts.forEach((p, i)=>{
-    const top = Math.min(y(p.chg), y(0)), h = Math.abs(y(p.chg) - y(0));
-    svg += `<rect x="${(cx(i) - bw / 2).toFixed(2)}" y="${top.toFixed(2)}" width="${bw.toFixed(2)}" height="${h.toFixed(2)}" fill="${p.chg >= 0 ? '#2e8f52' : '#c0392b'}" fill-opacity=".62"/>`;
-  });
-  svg += `<line x1="${M.l}" x2="${M.l + plotW}" y1="${y(0)}" y2="${y(0)}" style="stroke:var(--text3);stroke-width:1"/>`;
-  const every = cftcChartYears <= 1 ? 1 : cftcChartYears <= 2 ? 3 : cftcChartYears <= 5 ? 6 : 12;
-  let lastMi = -1;
-  pts.forEach((p, i)=>{
-    const d = new Date(p.date + 'T00:00:00Z'), mi = d.getUTCFullYear() * 12 + d.getUTCMonth();
-    if(mi % every === 0 && mi !== lastMi){
-      lastMi = mi;
-      svg += `<line x1="${cx(i)}" x2="${cx(i)}" y1="${M.t + plotH}" y2="${M.t + plotH + 5}" style="stroke:var(--text3)"/>`;
-      svg += `<text x="${cx(i)}" y="${H - 12}" text-anchor="middle" style="fill:var(--text3);font-size:11px">${d.toLocaleDateString('en-US', {month:'short', year:'2-digit', timeZone:'UTC'})}</text>`;
-    }
-  });
-  svg += `<g class="cftc-hover" pointer-events="none"></g><rect class="cftc-hit" x="${M.l}" y="${M.t}" width="${plotW}" height="${plotH}" fill="transparent"/></svg>`;
-  box.innerHTML = headerHtml + svg;
-  wireCftcChartControls(box, idx, list);
-
-  const el = box.querySelector('svg'), hit = el.querySelector('.cftc-hit'), g = el.querySelector('.cftc-hover');
-  hit.addEventListener('mousemove', ev=>{
-    const r = el.getBoundingClientRect(), x = (ev.clientX - r.left) * (W / r.width);
-    const i = Math.max(0, Math.min(n - 1, Math.floor((x - M.l) / step))), p = pts[i], X = cx(i);
-    const rows = [
-      new Date(p.date + 'T00:00:00Z').toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric', year:'numeric', timeZone:'UTC'}),
-      `Net change   ${signed(p.chg)}  (${p.chg > 0 ? 'buying' : p.chg < 0 ? 'selling' : 'flat'})`,
-      `Net position ${cftcFmt(p.net)}`,
-      `Longs ${signed(p.dLong)}   Shorts ${signed(p.dShort)}`,
-    ];
-    const tw = 286, th = rows.length * 16 + 12, tx = X > M.l + plotW / 2 ? X - tw - 12 : X + 12, ty = M.t + 8;
-    g.innerHTML = `<line x1="${X}" x2="${X}" y1="${M.t}" y2="${M.t + plotH}" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3 3"/>`
-      + `<rect x="${tx}" y="${ty}" width="${tw}" height="${th}" rx="3" style="fill:var(--bg);stroke:var(--border2)"/>`
-      + rows.map((t, k)=>`<text x="${tx + 10}" y="${ty + 20 + k * 16}" xml:space="preserve" style="fill:${k === 0 ? 'var(--amber)' : 'var(--text)'};font-size:11.5px;font-weight:${k === 0 ? 800 : 600}">${t.replace(/ /g, '\u00a0')}</text>`).join('');
-  });
-  hit.addEventListener('mouseleave', ()=>{ g.innerHTML = ''; });
-}
-
-function wireCftcChartControls(box, idx, list){
-  box.querySelectorAll('.cftc-mode').forEach(b=>b.addEventListener('click', ()=>{ cftcChartMode = b.dataset.v; renderCftcChart(); }));
-  box.querySelectorAll('.cftc-years').forEach(b=>b.addEventListener('click', ()=>{ cftcChartYears = +b.dataset.v; renderCftcChart(); }));
-  box.querySelectorAll('.cftc-step').forEach(b=>b.addEventListener('click', ()=>{
-    if(!list.length) return;
-    const next = list[(idx + +b.dataset.d + list.length) % list.length];
-    cftcSelect(next.code, false);
-  }));
-}
-
-// Sizes every CFTC column to the widest thing actually in it, measured in the browser with the real data and font, so
-// nothing is ever cut off (fixed guesses kept failing once real numbers - 7-digit Treasury positions, 6-digit OI
-// changes - arrived). Spare width is shared out in proportion to CFTC_COL_WIDTHS; if the content needs more room than the
-// window offers, the whole table is scaled down to fit - so it never clips and never scrolls sideways.
-function fitCftcTable(){
-  const table = document.querySelector('#cftc-root table.cftc-table');
-  if(!table || !table.offsetParent) return;          // page hidden: it is fitted when the tab is shown
-  const box = table.parentElement, wrap = box.parentElement;
-  const cols = [...table.querySelectorAll('colgroup col')], n = cols.length;
-  // start from a clean, unscaled state so the measurements below are true sizes
-  box.style.transform = ''; box.style.width = ''; wrap.style.height = ''; wrap.style.overflowX = '';
-  table.style.minWidth = ''; table.style.width = '';
-  cols.forEach((c, i)=>{ c.style.width = CFTC_COL_WIDTHS[i] + '%'; });
-  const need = new Array(n).fill(0), wide = [];
-  const headRows = table.tHead ? [...table.tHead.rows] : [];
-  [...table.rows].forEach(tr=>{
-    if(tr.classList.contains('cftc-row-section')) return;
-    let ci = (headRows.length > 1 && tr === headRows[1]) ? 1 : 0;       // 2nd header row starts after the Product column
-    [...tr.cells].forEach(cell=>{
-      const span = cell.colSpan || 1, cs = getComputedStyle(cell), rg = document.createRange();
-      rg.selectNodeContents(cell);
-      const w = Math.ceil(rg.getBoundingClientRect().width + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + parseFloat(cs.borderLeftWidth || 0) + 4);
-      if(span === 1) need[ci] = Math.max(need[ci], w); else wide.push({ci, span, w});
-      ci += span;
-    });
-  });
-  // a heading that spans several columns (e.g. "Gross Positions") must fit across them
-  wide.forEach(({ci, span, w})=>{
-    const have = need.slice(ci, ci + span).reduce((a, b)=>a + b, 0);
-    if(w > have){ const add = (w - have) / span; for(let k = ci; k < ci + span; k++) need[k] += add; }
-  });
-  // Leave 3px of slack: the table's collapsed borders and sub-pixel rounding must never push it past its box (a 1px overshoot is
-  // enough for a browser to show a horizontal scrollbar), and the box itself is never allowed to scroll sideways at all.
-  const sumNeed = need.reduce((a, b)=>a + b, 0), avail = wrap.clientWidth - 3;
-  wrap.style.overflowX = 'hidden'; wrap.style.overflowX = 'clip';   // ('clip' is ignored by old browsers, which then keep 'hidden')
-  if(sumNeed > avail){
-    // lay the table out at the width it needs, then scale that down to the window. The scale comes from the widths
-    // actually set (each rounded up), so the scaled table can't overshoot the box by a pixel or two.
-    const px = need.map(Math.ceil), sum = px.reduce((a, b)=>a + b, 0);
-    cols.forEach((c, i)=>{ c.style.width = px[i] + 'px'; });
-    table.style.width = sum + 'px'; box.style.width = sum + 'px';
-    const w = Math.max(sum, table.offsetWidth), z = avail / w;      // table.offsetWidth includes the collapsed borders
-    box.style.width = w + 'px';
-    box.style.transform = `scale(${z})`;
-    wrap.style.height = (Math.ceil(box.offsetHeight * z) + 2) + 'px';   // a transform doesn't change layout height, so set it
-  } else {
-    const extra = avail - sumNeed;                               // plenty of room: share the spare width out
-    cols.forEach((c, i)=>{ c.style.width = (Math.floor((need[i] + extra * CFTC_COL_WIDTHS[i] / 100) * 10) / 10) + 'px'; });   // rounded down so the total can't exceed the box
-    table.style.width = avail + 'px';
-  }
-}
-let _cftcFitTimer = null;
-window.addEventListener('resize', ()=>{ clearTimeout(_cftcFitTimer); _cftcFitTimer = setTimeout(fitCftcTable, 150); });
-
-function renderCftc(){
-  const root = document.getElementById('cftc-root');
-  root.innerHTML = '';
-  const yrs = CFTC_DATA._meta?.years_history;
-  { const d = latestCftcDate(); setMetaLines('cftc-meta', CFTC_DATA._meta?.fetched_at, d ? 'Positions as of ' + fmtAsOfDate(d, true) : ''); }
-  const list = cftcProductList();
-  if(!list.some(e=>e.code === cftcSelected)) cftcSelected = list.length ? list[0].code : null;   // first product with data
-  root.insertAdjacentHTML('beforeend', buildCftcMasterTable());
-  root.insertAdjacentHTML('beforeend', `<div id="cftc-chart"></div>`);
-  root.querySelectorAll('tr.cftc-click').forEach(tr=>tr.addEventListener('click', ()=>cftcSelect(tr.dataset.code, true)));
-  fitCftcTable();
-  renderCftcChart();
-  root.insertAdjacentHTML('beforeend', `<div class="page-footnote">Click any row to chart it below. Managed Money (Fund) category; currencies, equities and Treasuries show Leveraged Funds (the closest equivalent in CFTC's financial-futures report) — ${yrs ? yrs+'yr lookback' : ''} — highlighted cells are top/bottom 10% of that lookback window. Small figure beside Gross Long/Short = change since last week (green = added, red = cut). Historical Max (blue-grey) = largest net long, net short, gross long and gross short over the window, in contracts (net maxes also show the largest % of OI in small type). Hover Gross Positions for % of open interest, and Historical Max for dates.</div>`);
-}
-
-function loadCftc(){
-  if(cftcLoaded) return;
-  cftcLoaded = true;
-  fetch('data/cftc_data.json?_=' + Date.now())
-    .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-    .then(data=>{
-      CFTC_DATA = data;
-      renderCftc();
-      cftcReady = true;
-      checkSummaryReady();
-    })
-    .catch(e=>{
-      document.getElementById('cftc-root').innerHTML = `<div id="cftc-err">Error loading CFTC data: ${e.message}</div>`;
-      cftcLoaded = false;
-    });
-}
-loadCftc();
-
-// ---------------- SUMMARY PAGE ----------------
-
-// Declared here (ahead of SUMMARY_ROWS below) since SUMMARY_ROWS references them directly
-// at array-literal-evaluation time — a forward reference to a later `const` would throw.
-const VEGOILS = ["Palm Oil", "Soybean Oil", "Rapeseed Oil", "Sunflower Oil"];
-const VEGOIL_EXPORTERS = ["Indonesia", "Malaysia", "Argentina", "Brazil", "United States", "Canada", "European Union", "Ukraine", "Russia"];
-const VEGOIL_IMPORTERS = ["India", "China", "Pakistan", "Bangladesh"];
-const MEALS = ["Soybean Meal", "Rapeseed Meal", "Sunflower Meal"];
-const MEAL_EXPORTERS = ["Argentina", "Brazil", "United States", "Canada", "European Union", "Ukraine", "Russia"];
-const MEAL_IMPORTERS = ["European Union", "Indonesia", "Vietnam", "Philippines"];
-
-const SUMMARY_ROWS = [
-  {section:'Grains',   label:'Wheat (Chicago SRW)', cftcCode:'001602', usdaComm:'Wheat', domestic:'United States', seasonalName:'Chicago Wheat', exportName:'WHEAT - SOFT RED WINTER'},
-  {section:'Grains',   label:'Wheat (KC HRW)',       cftcCode:'001612', usdaComm:'Wheat', domestic:'United States', seasonalName:'Kansas Wheat', exportName:'WHEAT - HARD RED WINTER'},
-  {section:'Grains',   label:'Wheat (Mpls Spring)',  cftcCode:'001626', usdaComm:'Wheat', domestic:'United States', seasonalName:'Spring Wheat', exportName:'WHEAT - HARD RED SPRING'},
-  {section:'Grains',   label:'Corn',                 cftcCode:'002602', usdaComm:'Corn', domestic:'United States', seasonalName:'Corn', exportName:'CORN - UNMILLED'},
-  {section:'Oilseeds', label:'Soybeans',             cftcCode:'005602', usdaComm:'Soybeans', domestic:'United States', seasonalName:'Soybeans', exportName:'SOYBEANS'},
-  {section:'Oilseeds', label:'Canola',               cftcCode:'135731', usdaComm:'Rapeseed/Canola', domestic:'Canada', seasonalName:'Canola Seed', exportName:null},
-  // Vegoils: Seasonality/Positioning/Export Sales YoY use Soybean Oil (the only vegoil with a
-  // tracked CFTC future, seasonal series, and US export data) as the representative instrument.
-  // Production YoY and Stocks/Use % Rank are genuinely combined across all 4 tracked oils.
-  {section:'Oilseeds', label:'Soyoil (Vegoils)',      cftcCode:'007601', usdaComm:null, domestic:'United States', seasonalName:'Soybean Oil', exportName:'SOYBEAN OIL', combinedList:VEGOILS, combinedExporters:VEGOIL_EXPORTERS},
-  // Meal: Seasonality/Positioning/Export Sales use Soybean Meal (the dominant traded meal,
-  // with a tracked CFTC future, seasonal series, and US export data — "SOYBEAN CAKE AND MEAL"
-  // is the exact commodity name confirmed in the export sales feed). Production YoY and
-  // Stocks/Use % Rank are genuinely combined across Soybean, Rapeseed, and Sunflower meal.
-  {section:'Oilseeds', label:'Soymeal (Meal)',        cftcCode:'026603', usdaComm:null, domestic:'United States', seasonalName:'Soybean Meal', exportName:'SOYBEAN CAKE AND MEAL', combinedList:MEALS, combinedExporters:MEAL_EXPORTERS},
-  {section:'Softs',    label:'Cotton',                cftcCode:'033661', usdaComm:'Cotton', domestic:'United States', seasonalName:'Cotton', exportName:'ALL UPLAND COTTON'},
-  {section:'Softs',    label:'Cocoa',                 cftcCode:'073732', usdaComm:'Cocoa', domestic:"Cote d'Ivoire", seasonalName:'NY Cocoa', exportName:null},
-  {section:'Softs',    label:'Coffee',                cftcCode:'083731', usdaComm:'Coffee', domestic:'Brazil', seasonalName:'Arabica Coffee', exportName:null},
-  {section:'Softs',    label:'Sugar',                 cftcCode:'080732', usdaComm:'Sugar', domestic:'Brazil', seasonalName:'Sugar No. 11', exportName:null},
-];
-
-function summaryYearsSorted(usdaComm){
-  const countries = DATA[usdaComm];
-  if(!countries) return [];
-  const allYears = new Set();
-  Object.values(countries).forEach(yrs=>Object.keys(yrs).forEach(y=>allYears.add(y)));
-  return [...allYears].sort();
-}
-
-function summaryProdYoY(usdaComm, country){
-  const countries = DATA[usdaComm];
-  if(!countries || !countries[country]) return null;
-  const years = summaryYearsSorted(usdaComm);
-  if(years.length<2) return null;
-  const latest = years[years.length-1], prev = years[years.length-2];
-  const curRaw = countries[country][latest], prevRaw = countries[country][prev];
-  const cur = (curRaw && curRaw.pr!==undefined) ? curRaw.pr : null;
-  const pr0 = (prevRaw && prevRaw.pr!==undefined) ? prevRaw.pr : null;
-  return yoyPct(cur, pr0);
-}
-
-function summaryProdYoYAgg(usdaComm, countryList){
-  const countries = DATA[usdaComm];
-  if(!countries || !countryList || !countryList.length) return null;
-  const years = summaryYearsSorted(usdaComm);
-  if(years.length<2) return null;
-  const latest = years[years.length-1], prev = years[years.length-2];
-  const curAgg = sumCountries(countries, countryList, latest);
-  const prevAgg = sumCountries(countries, countryList, prev);
-  const cur = (curAgg && curAgg.pr!==undefined) ? curAgg.pr : null;
-  const pr0 = (prevAgg && prevAgg.pr!==undefined) ? prevAgg.pr : null;
-  return yoyPct(cur, pr0);
-}
-
-function summaryStuPctile(usdaComm, yearDataFn){
-  const years = summaryYearsSorted(usdaComm);
-  if(!years.length) return null;
-  const hist = years.map(y=>getStu(yearDataFn(y))).filter(v=>v!==null);
-  const latestYear = years[years.length-1];
-  const v = getStu(yearDataFn(latestYear));
-  if(v===null || !hist.length) return null;
-  return {p: hist.filter(x=>x<=v).length/hist.length*100, v};   // rank vs history, and the actual stocks/use %
-}
-
-// Vegoils-combined equivalents of the above — sum across all 4 tracked oils instead of one commodity.
-function summaryProdYoYCombined(commList, country){
-  const years = commodityGroupAllYears(commList);
-  if(years.length<2) return null;
-  const latest = years[years.length-1], prev = years[years.length-2];
-  const curAgg = sumAcrossOils((m,yr)=>(DATA[m]&&DATA[m][country])?DATA[m][country][yr]:undefined, latest, commList);
-  const prevAgg = sumAcrossOils((m,yr)=>(DATA[m]&&DATA[m][country])?DATA[m][country][yr]:undefined, prev, commList);
-  const cur = (curAgg && curAgg.pr!==undefined) ? curAgg.pr : null;
-  const pr0 = (prevAgg && prevAgg.pr!==undefined) ? prevAgg.pr : null;
-  return yoyPct(cur, pr0);
-}
-function summaryProdYoYAggCombined(commList, countryList){
-  const years = commodityGroupAllYears(commList);
-  if(years.length<2 || !countryList || !countryList.length) return null;
-  const latest = years[years.length-1], prev = years[years.length-2];
-  const curAgg = sumAcrossOils((m,yr)=>sumCountries(DATA[m]||{}, countryList, yr), latest, commList);
-  const prevAgg = sumAcrossOils((m,yr)=>sumCountries(DATA[m]||{}, countryList, yr), prev, commList);
-  const cur = (curAgg && curAgg.pr!==undefined) ? curAgg.pr : null;
-  const pr0 = (prevAgg && prevAgg.pr!==undefined) ? prevAgg.pr : null;
-  return yoyPct(cur, pr0);
-}
-function summaryStuPctileCombined(commList, entityFn){
-  const years = commodityGroupAllYears(commList);
-  if(!years.length) return null;
-  const hist = years.map(y=>getStu(sumAcrossOils(entityFn, y, commList))).filter(v=>v!==null);
-  const latestYear = years[years.length-1];
-  const v = getStu(sumAcrossOils(entityFn, latestYear, commList));
-  if(v===null || !hist.length) return null;
-  return {p: hist.filter(x=>x<=v).length/hist.length*100, v};
-}
-
-function summaryPctileClass(p){
-  if(p===null || p===undefined) return '';
-  if(p<=25) return 'pctile-tight';
-  if(p>=75) return 'pctile-loose';
-  return 'pctile-mid';
-}
-
-function summaryPctileText(p){ return p===null||p===undefined ? '—' : cftcOrdinal(p); }
-// Stocks-to-use cell: just the rank vs history (the actual stocks/use % is in the hover text)
-function summaryStuCell(o, first){
-  const cls = (first ? 'grp-l ' : '') + summaryPctileClass(o ? o.p : null);
-  if(!o) return `<td class="${cls}">—</td>`;
-  return `<td class="${cls}" title="Rank vs history (higher = looser) · stocks/use ${fmtStu(o.v)}">${summaryPctileText(o.p)}</td>`;
-}
-
-// This week and the week after it. After the last slot ("Dec 28") the next week is early January; slot 0 ("Dec 29") is
-// that same New Year week, so it is skipped.
-function getSeasonalPair(productName){
-  const cur = getNextSeasonalEntry(productName);
-  if(!cur) return [null, null];
-  const vals = SEASONALS_DATA[productName];
-  const i = SEASONALS_WEEKS.indexOf(cur.label);
-  const j = (i >= SEASONALS_WEEKS.length - 1) ? 1 : i + 1;
-  return [cur, {label: SEASONALS_WEEKS[j], value: vals[j]}];
-}
-function seasonalHeaderLabels(){
-  const first = (typeof SEASONALS_DATA !== 'undefined') ? Object.keys(SEASONALS_DATA)[0] : null;
-  const pair = first ? getSeasonalPair(first) : [null, null];
-  return [pair[0] ? pair[0].label : 'This Wk', pair[1] ? pair[1].label : 'Next Wk'];
-}
-
-function getNextSeasonalEntry(productName){
-  if(typeof SEASONALS_WEEKS === 'undefined' || typeof SEASONALS_DATA === 'undefined') return null;
-  const vals = SEASONALS_DATA[productName];
-  if(!vals) return null;
-  const monthMap = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
-  const today = new Date(); today.setHours(0,0,0,0);
-  const year = today.getFullYear();
-  // Picks the most recent week whose start date is on or before today — i.e. the
-  // currently-active weekly period, not the upcoming one. E.g. if today is Sep 15
-  // and the labeled weeks are "Sep 14" / "Sep 21", this returns "Sep 14" since
-  // today falls inside that week's Sep 14–20 span.
-  let best = null;
-  // also try last year's dates: in early January the newest week started the previous December (Dec 28/29)
-  [year-1, year].forEach(yr=>{
-    SEASONALS_WEEKS.forEach((w,i)=>{
-      const parts = w.split(' ');
-      const d = new Date(yr, monthMap[parts[0]], parseInt(parts[1],10));
-      if(d<=today && (best===null || d>best.date)){
-        best = {date:d, label:w, value:vals[i]};
+    const cur = Y[fc][r.k], py = Y[prevCy(fc)] ? Y[prevCy(fc)][r.k] : null;
+    let yoy='<td>–</td>', pr='<td class="prior sep">–</td>', ch='<td>–</td>', pc='', pd='';
+    if (PS){
+      if (r.k==='_rank'){ const rr=rank(PS.v.su); pc = `<td class="gap"></td><td class="pc chg">${rr==null?'–':ordinal(rr)}</td>`; pd='<td class="pc same">–</td>'; }
+      else {
+        const v = PS.v[r.k], changed = PS.changed.has(r.k);
+        pc = `<td class="gap"></td><td class="pc ${changed?'chg':'same'}">${show(v)}</td>`;
+        const dd = (v!=null && cur!=null) ? v-cur : null;
+        pd = (!changed || dd==null || Math.abs(dd)<(r.pctv?0.05:0.5)) ? '<td class="pc same">–</td>' : `<td class="pc chg">${dd>0?'+':''}${r.pctv?dd.toFixed(1)+'pp':fmt(dd,d)}</td>`;
       }
-    });
-  });
-  return best;
-}
-
-// Relative column weights -> percentages summing to 100, so a table can fill its container at any width.
-function colPercents(weights){ const t = weights.reduce((a,b)=>a+b,0); return weights.map(w=>(w/t*100).toFixed(3)+'%'); }
-
-function buildSummaryTable(){
-  const wk = seasonalHeaderLabels();   // the two week-start dates, e.g. "Oct 19" and "Oct 26"
-  // Seasonality keeps the width it had as one column (5.5 + 5.5 = 11 of 100); the YoY wording moves into the sub-headers.
-  const groups = [
-    {label:'Seasonality', cols:[{l:wk[0], w:5.5}, {l:wk[1], w:5.5}]},
-    {label:'Positioning', cols:[{l:'Net % OI', w:7}, {l:'Pctile', w:6.5}, {l:'Change', w:7}]},
-    {label:'Production', cols:[{l:'Domestic YoY', w:10}, {l:'Exporters YoY', w:10}]},
-    {label:'Export Sales', cols:[{l:'Total Commit. YoY', w:13}]},
-    {label:'Stocks to Use', cols:[{l:'Domestic', w:9.25}, {l:'World', w:9.25}]},
-  ];
-  const totalCols = 1 + groups.reduce((sum,g)=>sum+g.cols.length,0);
-  const productWidth = 17;
-
-  const pcts = colPercents([productWidth, ...groups.flatMap(g=>g.cols.map(c=>c.w))]);
-  let html = `<div class="tbl-wrap"><table class="summary-table"><colgroup>${pcts.map(pc=>`<col style="width:${pc}">`).join('')}`;
-  html += `</colgroup><thead><tr><th rowspan="2">Product</th>`;
-  groups.forEach(g=>{ html += `<th colspan="${g.cols.length}" class="grp-l" style="text-align:center;color:var(--amber);font-size:13px;letter-spacing:.08em">${g.label}</th>`; });
-  html += `</tr><tr>`;
-  groups.forEach(g=>{
-    g.cols.forEach((c,i)=>{ html += `<th${i===0?' class="grp-l"':''}>${c.l}</th>`; });
-  });
-  html += `</tr></thead><tbody>`;
-
-  let curSection = null;
-  SUMMARY_ROWS.forEach(row=>{
-    if(row.section !== curSection){
-      curSection = row.section;
-      html += `<tr class="cftc-row-section"><td colspan="${totalCols}">${curSection}</td></tr>`;
     }
-
-    const countries = DATA[row.usdaComm] || {};
-    const expList = row.combinedList ? row.combinedExporters : (EXPORTERS[row.usdaComm]||[]).filter(c=>countries[c]);
-
-    // Seasonality: this week and next
-    const seasPair = getSeasonalPair(row.seasonalName);
-
-    // Positioning (CFTC)
-    const hist = (CFTC_DATA.codes && CFTC_DATA.codes[row.cftcCode]) ? CFTC_DATA.codes[row.cftcCode].history : null;
-    const m = computeLatestMetrics({code:row.cftcCode, label:row.label}, hist);
-
-    // Fundamentals
-    let domesticYoY, exportersYoY, domesticStu, worldStu;
-    if(row.combinedList){
-      domesticYoY = summaryProdYoYCombined(row.combinedList, row.domestic);
-      exportersYoY = summaryProdYoYAggCombined(row.combinedList, expList);
-      domesticStu = summaryStuPctileCombined(row.combinedList, (cm,yr)=>(DATA[cm]&&DATA[cm][row.domestic])?DATA[cm][row.domestic][yr]:undefined);
-      worldStu = summaryStuPctileCombined(row.combinedList, (cm,yr)=>(DATA[cm]&&DATA[cm]['World'])?DATA[cm]['World'][yr]:undefined);
-    } else {
-      domesticYoY = summaryProdYoY(row.usdaComm, row.domestic);
-      exportersYoY = summaryProdYoYAgg(row.usdaComm, expList);
-      domesticStu = summaryStuPctile(row.usdaComm, y=>(countries[row.domestic]||{})[y]);
-      worldStu = summaryStuPctile(row.usdaComm, y=>(countries['World']||{})[y]);
-    }
-
-    // Export Sales — Total Commitment YoY
-    let totalCommitYoY = null;
-    if(row.exportName && EXPORTS_DATA && EXPORTS_DATA.commodities && EXPORTS_DATA.commodities[row.exportName]){
-      const t = EXPORTS_DATA.commodities[row.exportName].total;
-      if(t) totalCommitYoY = t.yoy_total_commitment_pct;
-    }
-
-    html += `<tr><td>${row.label}</td>`;
-    seasPair.forEach((seas, k)=>{
-      const first = k===0 ? 'grp-l' : '';
-      if(!seas){
-        html += `<td class="${first}" style="color:var(--text3)">—</td>`;
-      } else {
-        const text = (seas.value>0?'+':'')+seas.value;
-        html += `<td class="${first}" style="background:${seasonalColor(seas.value)};color:#111;font-weight:800" title="Week of ${seas.label}">${text}</td>`;
+    if (r.k==='_rank'){ pr = P ? rankCell(P.su, true) : pr; }
+    else {
+      if (cur!=null && py!=null) yoy = r.pctv ? `<td class="${cur-py>=0?'up':'dn'}">${cur-py>=0?'+':''}${(cur-py).toFixed(1)}pp</td>` : pctTd(pct(cur,py));
+      const pv = P ? P[r.k] : null;
+      if (pv!=null && cur!=null){
+        pr = `<td class="prior sep">${show(pv)}</td>`;
+        const dd = cur-pv, zero = Math.abs(dd) < (r.pctv||d ? 0.05 : 0.5);
+        ch = zero ? '<td class="dim">0</td>' : `<td class="${dd>0?'up':'dn'}">${dd>0?'+':''}${r.pctv?dd.toFixed(1)+'pp':fmt(dd,d)}</td>`;
       }
-    });
-    if(!m){
-      html += `<td class="grp-l" colspan="3" style="text-align:left;color:var(--text3)">No CFTC data</td>`;
-    } else {
-      html += `<td class="grp-l ${m.netPctOi>=0?'cftc-up':'cftc-dn'}">${cftcPct(m.netPctOi)}</td>`;
-      html += `<td class="${netExtremeClass(m.netPctile)}">${m.netPctile===null?'—':cftcOrdinal(m.netPctile)}</td>`;
-      const chgCls = (m.weeklyChange===null || m.weeklyChange===0) ? '' : (m.weeklyChange>0 ? 'cftc-up' : 'cftc-dn');
-      html += `<td class="${chgCls}" title="${posActionText(m.net, m.weeklyChange)} (net position vs last week, contracts)">${cftcSignedNum(m.weeklyChange)}</td>`;
     }
-    html += `<td class="grp-l ${domesticYoY>=0?'cftc-up':'cftc-dn'}">${cftcSignedPct(domesticYoY,1)}</td>`;
-    html += `<td class="${exportersYoY>=0?'cftc-up':'cftc-dn'}">${cftcSignedPct(exportersYoY,1)}</td>`;
-    html += `<td class="grp-l ${totalCommitYoY>=0?'cftc-up':'cftc-dn'}">${totalCommitYoY===null?'—':cftcSignedPct(totalCommitYoY,1)}</td>`;
-    html += summaryStuCell(domesticStu, true);
-    html += summaryStuCell(worldStu, false);
-    html += `</tr>`;
-  });
-
-  html += `</tbody></table></div>`;
-  return html;
-}
-
-// Crop calendar — standard planting/harvest windows for major origins.
-// Static reference data (not sourced from a live feed): standard agronomic windows
-// published by USDA-FAS, IGC, and general trade references.
-const CROP_CALENDAR = [
-  {section:'Wheat', origin:'United States (Winter)', plant:[9,10,11], harvest:[5,6,7]},
-  {section:'Wheat', origin:'United States (Spring)', plant:[4,5,6], harvest:[8,9]},
-  {section:'Wheat', origin:'Canada', plant:[4,5,6], harvest:[8,9,10]},
-  {section:'Wheat', origin:'European Union', plant:[9,10,11], harvest:[6,7,8]},
-  {section:'Wheat', origin:'Russia', plant:[8,9,10,4,5], harvest:[7,8,9]},
-  {section:'Wheat', origin:'Ukraine', plant:[9,10], harvest:[6,7,8]},
-  {section:'Wheat', origin:'Australia', plant:[4,5,6], harvest:[11,12,1]},
-  {section:'Wheat', origin:'Argentina', plant:[5,6,7], harvest:[11,12,1]},
-  {section:'Corn', origin:'United States', plant:[4,5,6], harvest:[9,10,11]},
-  {section:'Corn', origin:'Brazil (1st crop)', plant:[9,10,11], harvest:[2,3,4]},
-  {section:'Corn', origin:'Brazil (Safrinha)', plant:[1,2,3], harvest:[6,7,8]},
-  {section:'Corn', origin:'Argentina', plant:[9,10,11,12], harvest:[3,4,5,6]},
-  {section:'Corn', origin:'Ukraine', plant:[4,5], harvest:[9,10,11]},
-  {section:'Corn', origin:'European Union', plant:[4,5], harvest:[9,10]},
-  {section:'Soybeans', origin:'United States', plant:[4,5,6], harvest:[9,10,11]},
-  {section:'Soybeans', origin:'Brazil', plant:[9,10,11,12], harvest:[1,2,3,4]},
-  {section:'Soybeans', origin:'Argentina', plant:[10,11,12], harvest:[3,4,5]},
-  {section:'Soybeans', origin:'Paraguay', plant:[9,10,11], harvest:[2,3,4]},
-  {section:'Canola', origin:'Canada', plant:[4,5,6], harvest:[8,9,10]},
-  {section:'Canola', origin:'Australia', plant:[4,5,6], harvest:[10,11,12]},
-  {section:'Canola', origin:'European Union', plant:[8,9], harvest:[6,7]},
-  {section:'Canola', origin:'Ukraine', plant:[8,9], harvest:[6,7]},
-  {section:'Cotton', origin:'United States', plant:[4,5,6], harvest:[9,10,11]},
-  {section:'Cotton', origin:'India', plant:[5,6,7], harvest:[11,12,1]},
-  {section:'Cotton', origin:'China', plant:[4,5], harvest:[9,10]},
-  {section:'Cotton', origin:'Brazil', plant:[12,1,2], harvest:[6,7,8]},
-  {section:'Cotton', origin:'Pakistan', plant:[4,5,6], harvest:[10,11,12]},
-  {section:'Cotton', origin:'Australia', plant:[10,11,12], harvest:[3,4,5]},
-  {section:'Cocoa', origin:"Cote d'Ivoire (Main Crop)", plant:[], harvest:[10,11,12,1]},
-  {section:'Cocoa', origin:"Cote d'Ivoire (Mid Crop)", plant:[], harvest:[4,5,6,7]},
-  {section:'Cocoa', origin:'Ghana (Main Crop)', plant:[], harvest:[10,11,12,1]},
-  {section:'Cocoa', origin:'Ecuador', plant:[], harvest:[3,4,5,10,11,12]},
-  {section:'Coffee', origin:'Brazil (Arabica)', plant:[], harvest:[5,6,7,8,9]},
-  {section:'Coffee', origin:'Vietnam (Robusta)', plant:[], harvest:[10,11,12,1]},
-  {section:'Coffee', origin:'Colombia (Main)', plant:[], harvest:[10,11,12]},
-  {section:'Coffee', origin:'Colombia (Mitaca)', plant:[], harvest:[4,5,6]},
-  {section:'Coffee', origin:'Ethiopia', plant:[], harvest:[10,11,12,1]},
-  {section:'Sugar', origin:'Brazil (Center-South)', plant:[], harvest:[4,5,6,7,8,9,10,11]},
-  {section:'Sugar', origin:'India', plant:[], harvest:[10,11,12,1,2,3,4]},
-  {section:'Sugar', origin:'Thailand', plant:[], harvest:[11,12,1,2,3,4]},
-  {section:'Sugar', origin:'Australia', plant:[], harvest:[6,7,8,9,10,11,12]},
-];
-const CAL_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-
-function fmtPctNormal(v){ return (v===null||v===undefined||isNaN(v)) ? '—' : Math.round(v)+'%'; }
-function fmtTempDep(v){
-  if(v===null||v===undefined||isNaN(v)) return '—';
-  const s = v>=0?'+':'';
-  return s+v.toFixed(1)+'°C';
-}
-// band (optional): values within +/-band of normal are left uncoloured ("normal").
-// Without a band, anything above/below normal is coloured (used for the temp departures).
-function weatherDirClass(v, isPct, band){
-  if(v===null||v===undefined||isNaN(v)) return '';
-  const baseline = isPct ? 100 : 0;
-  const dev = v - baseline;
-  if(band !== undefined && Math.abs(dev) <= band) return '';
-  if(dev>0) return 'cftc-up';
-  if(dev<0) return 'cftc-dn';
-  return '';
-}
-
-function escHtml(t){ return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-function fmtPctNormalWithMm(v, mm){
-  const pct = fmtPctNormal(v);
-  if(mm===null||mm===undefined||isNaN(mm)) return pct;
-  return `${pct} <span style="color:var(--text3);font-size:10px">(${Math.round(mm)}mm)</span>`;
-}
-function fmtHiLo(hi, lo){
-  if((hi===null||hi===undefined||isNaN(hi)) && (lo===null||lo===undefined||isNaN(lo))) return '—';
-  const hiTxt = (hi===null||hi===undefined||isNaN(hi)) ? '—' : Math.round(hi)+'°';
-  const loTxt = (lo===null||lo===undefined||isNaN(lo)) ? '—' : Math.round(lo)+'°';
-  return `${hiTxt} / ${loTxt}`;
-}
-
-// Footnote under the weather table: which models were used, and when the weather run was pulled.
-// "As of" is when the fetcher pulled the data (shown in the viewer's local time); Open-Meteo blends several
-// models that each run on their own schedule, so there is no single model-initialisation time to quote.
-function buildWeatherFootnote(){
-  if(!WEATHER_DATA) return weatherState === 'loading' ? '' : 'Weather data unavailable.';
-  const meta = WEATHER_DATA._meta || {};
-  const regions = WEATHER_DATA.regions || {};
-  const hasOutlook = Object.values(regions).some(r => 'outlook_temp_dep_c' in r);
-  let when = '';
-  if(meta.fetched_at){
-    const dt = new Date(meta.fetched_at);
-    when = isNaN(dt) ? String(meta.fetched_at)
-      : dt.toLocaleString('en-US', {month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', timeZoneName:'short'});
-  }
-  let txt = 'Weather models: Open-Meteo best-match blend of national weather models (incl. NOAA GFS/HRRR, ECMWF IFS, DWD ICON, GEM) for recent conditions and the 14-day forecast; normals from 10 years of ERA5 reanalysis';
-  if(hasOutlook) txt += '; outlook from the ECMWF SEAS5 seasonal ensemble (a lean, not a forecast)';
-  txt += '.';
-  if(when) txt += ' As of ' + escHtml(when) + ' weather run.';
-  if(meta.outlook_error) txt += ' Outlook incomplete: ' + escHtml(meta.outlook_error) + '.';
-  return txt;
-}
-
-function buildWeatherTable(){
-  const regions = (WEATHER_DATA && WEATHER_DATA.regions) || {};
-  const wxMeta = (WEATHER_DATA && WEATHER_DATA._meta) || {};
-  // The Outlook group appears whenever the data file carries outlook fields (they're null if the seasonal call failed).
-  const hasOutlook = Object.values(regions).some(r => 'outlook_temp_dep_c' in r);
-
-  // One rule for every precip column: left uncoloured ("normal") within +/-20% of normal, coloured outside it.
-  const PRECIP_BAND = 20;
-  const groups = [
-    {label:'Historical', cols:[
-      {l:'90D Precip', w:10.5},
-      {l:'30D Precip', w:10.5},
-      {l:'7D Temp Dep', w:9.5},
-    ]},
-    {label:'Forecast (Next 14 Days)', cols:[
-      {l:'Temp Dep', w:9.5},
-      {l:'Hi / Lo (°C)', w:10.5},
-      {l:'Precip', w:10.5},
-    ]},
-  ];
-  if(hasOutlook){
-    groups.push({label:'Outlook ' + (wxMeta.outlook_label || '3 Mo'), cols:[
-      {l:'Temp Dep', w:8},
-      {l:'Precip', w:8},
-    ]});
-  }
-  const totalCols = 1 + groups.reduce((sum,g)=>sum+g.cols.length,0);
-  const pcts = colPercents([23, ...groups.flatMap(g=>g.cols.map(c=>c.w))]);
-  let html = `<table class="weather-table"><colgroup>${pcts.map(pc=>`<col style="width:${pc}">`).join('')}`;
-  html += `</colgroup><thead><tr><th rowspan="2" style="text-align:left">Region</th>`;
-  groups.forEach(g=>{ html += `<th colspan="${g.cols.length}" class="grp-l" style="text-align:center;color:var(--amber);font-size:12px;letter-spacing:.08em">${g.label}</th>`; });
-  html += `</tr><tr>`;
-  groups.forEach(g=>{
-    g.cols.forEach((c,i)=>{ html += `<th${i===0?' class="grp-l"':''}>${c.l}</th>`; });
-  });
-  html += `</tr></thead><tbody>`;
-
-  // Rows are grouped under a division header (Canada / United States / South America / Europe / Asia).
-  // The division comes from the data file itself (fetch_weather.py is the single place regions are defined).
-  let curDiv = null;
-  Object.keys(regions).forEach(name=>{
-    const d = regions[name];
-    if(d.division && d.division !== curDiv){
-      curDiv = d.division;
-      html += `<tr class="cftc-row-section"><td colspan="${totalCols}">${curDiv}</td></tr>`;
-    }
-    html += `<tr><td>${name}</td>`;
-    html += `<td class="grp-l ${weatherDirClass(d.precip_90d_pct_normal, true, PRECIP_BAND)}">${fmtPctNormalWithMm(d.precip_90d_pct_normal, d.precip_90d_mm)}</td>`;
-    html += `<td class="${weatherDirClass(d.precip_30d_pct_normal, true, PRECIP_BAND)}">${fmtPctNormalWithMm(d.precip_30d_pct_normal, d.precip_30d_mm)}</td>`;
-    html += `<td class="${weatherDirClass(d.temp_dep_7d_c, false)}">${fmtTempDep(d.temp_dep_7d_c)}</td>`;
-    html += `<td class="grp-l ${weatherDirClass(d.temp_dep_14d_forecast_c, false)}">${fmtTempDep(d.temp_dep_14d_forecast_c)}</td>`;
-    html += `<td>${fmtHiLo(d.temp_14d_forecast_hi_c, d.temp_14d_forecast_lo_c)}</td>`;
-    html += `<td class="${weatherDirClass(d.precip_14d_forecast_pct_normal, true, PRECIP_BAND)}">${fmtPctNormalWithMm(d.precip_14d_forecast_pct_normal, d.precip_14d_forecast_mm)}</td>`;
-    if(hasOutlook){
-      html += `<td class="grp-l ${weatherDirClass(d.outlook_temp_dep_c, false, 0.3)}">${fmtTempDep(d.outlook_temp_dep_c)}</td>`;
-      html += `<td class="${weatherDirClass(d.outlook_precip_pct_normal, true, PRECIP_BAND)}">${fmtPctNormal(d.outlook_precip_pct_normal)}</td>`;
-    }
-    html += `</tr>`;
-  });
-  html += `</tbody></table>`;
-  return html;
-}
-
-function buildCropCalendarTable(){
-  const curMonth = new Date().getMonth() + 1; // 1-12
-
-  const calPcts = colPercents([20, ...CAL_MONTHS.map(()=>80/CAL_MONTHS.length)]);
-  let html = `<table class="cal-table"><colgroup>${calPcts.map(pc=>`<col style="width:${pc}">`).join('')}`;
-  html += `</colgroup><thead><tr><th style="text-align:left">Origin</th>`;
-  CAL_MONTHS.forEach((m,i)=>{
-    const isCur = (i+1)===curMonth;
-    html += `<th class="${isCur?'cal-cur-month':''}">${m}</th>`;
-  });
-  html += `</tr></thead><tbody>`;
-
-  let curSection = null;
-  CROP_CALENDAR.forEach(row=>{
-    if(row.section !== curSection){
-      curSection = row.section;
-      html += `<tr class="cftc-row-section"><td colspan="13">${curSection}</td></tr>`;
-    }
-    html += `<tr><td>${row.origin}</td>`;
-    for(let m=1; m<=12; m++){
-      const isPlant = row.plant.includes(m);
-      const isHarvest = row.harvest.includes(m);
-      const isCur = m===curMonth;
-      let bg = 'transparent', label = '';
-      if(isPlant && isHarvest){ bg = 'linear-gradient(135deg, rgba(46,143,82,.35) 50%, rgba(230,180,20,.4) 50%)'; label = 'P/H'; }
-      else if(isPlant){ bg = 'rgba(46,143,82,.30)'; label = 'P'; }
-      else if(isHarvest){ bg = 'rgba(230,180,20,.40)'; label = 'H'; }
-      const curCls = isCur ? ' cal-cur-month' : '';
-      html += `<td class="${curCls}" style="background:${bg};color:var(--text);font-weight:700">${label}</td>`;
-    }
-    html += `</tr>`;
-  });
-  html += `</tbody></table>`;
-  return html;
-}
-
-function renderSummary(){
-  const root = document.getElementById('summary-root');
-  root.innerHTML = '';
-  // Not every run refreshes every source (a failed fetcher keeps its previous data) - so show the NEWEST run time
-  // here. How fresh each source's data really is is what the "Data as of" line below is for.
-  const stamps = [DATA, CFTC_DATA, EXPORTS_DATA]
-    .map(d => d && d._meta && d._meta.fetched_at)
-    .filter(Boolean)
-    .sort()
-    .reverse();
-  const asOf = [];
-  { const d = latestCftcDate(); if(d) asOf.push('CFTC ' + fmtAsOfDate(d, true)); }
-  { const d = parseAnyDate(DATA && DATA._meta && DATA._meta.wasde_release); if(d) asOf.push('USDA ' + fmtAsOfDate(d, false) + ' WASDE'); }
-  { const d = latestExportsDate(); if(d) asOf.push('Exports wk ending ' + fmtAsOfDate(d, true)); }
-  setMetaLines('summary-meta', stamps.length ? stamps[0] : 'unknown', asOf.length ? 'Data as of: ' + asOf.join(' · ') : '');
-  root.insertAdjacentHTML('beforeend', buildSummaryTable());
-
-  root.insertAdjacentHTML('beforeend', `<div class="page-footnote"><ul>
-    <li>Domestic = United States, except Canola (Canada) and Coffee/Sugar (Brazil), the actual major producers. Those rows have no Export Sales YoY.</li>
-    <li>Soyoil (Vegoils) and Soymeal (Meal): Seasonality, Positioning and Export Sales use Soybean Oil / Soybean Meal. Production YoY and Stocks/Use Rank combine all oils / all meals.</li>
-    <li>Cocoa: Positioning and Seasonality only. USDA doesn't track cocoa.</li>
-    <li>Seasonality: this week and next. Positioning Change = the week's move in net position (contracts); same direction as the net position = adding, opposite = unwinding.</li>
-    <li>Coffee and Sugar use USDA's semi-annual reports, not the monthly WASDE shown in the header.</li>
-  </ul></div>`);
-}
-
-// The Weather page: the weather table + the crop calendar (static reference). Independent of the Summary page.
-function renderWeatherPage(){
-  const root = document.getElementById('weather-root');
-  if(!root) return;
-  root.innerHTML = '';
-  const stamp = WEATHER_DATA && WEATHER_DATA._meta && WEATHER_DATA._meta.fetched_at;
-  setMetaLines('weather-meta', weatherState === 'loading' ? 'loading…' : (stamp || 'unavailable'), '');
-  root.insertAdjacentHTML('beforeend', `<div class="cftc-row-section" style="padding:8px 10px;border-top:2px solid var(--amber);color:var(--amber);font-weight:900;text-transform:uppercase;letter-spacing:.16em;font-size:13px;margin:0">Weather — Major Growing Regions</div>`);
-  if(WEATHER_DATA){
-    root.insertAdjacentHTML('beforeend', `<div class="tbl-wrap">${buildWeatherTable()}</div>`);
-  } else {
-    root.insertAdjacentHTML('beforeend', `<div style="padding:18px 0;color:var(--text3)">${weatherState==='loading' ? 'Loading weather…' : ''}</div>`);
-  }
-  root.insertAdjacentHTML('beforeend', `<div style="font-size:11px;color:var(--text3);margin:8px 0 0">${buildWeatherFootnote()}</div>`);
-
-  root.insertAdjacentHTML('beforeend', `<div class="cftc-row-section" style="padding:8px 10px;border-top:2px solid var(--amber);color:var(--amber);font-weight:900;text-transform:uppercase;letter-spacing:.16em;font-size:13px;margin:28px 0 0">Crop Calendar — Major Origins</div>`);
-  root.insertAdjacentHTML('beforeend', `<div style="font-size:11px;color:var(--text3);margin:10px 0"><span style="background:rgba(46,143,82,.30);padding:1px 6px;border-radius:2px">P</span> Planting &nbsp; <span style="background:rgba(230,180,20,.40);padding:1px 6px;border-radius:2px">H</span> Harvest — standard reference windows, not live data; actual dates shift with weather and region within each country.</div>`);
-  root.insertAdjacentHTML('beforeend', `<div class="tbl-wrap">${buildCropCalendarTable()}</div>`);
-}
-renderWeatherPage();   // the crop calendar is static, so draw the page right away; the weather table fills in when its data arrives
-</script>
-
-<style>
-.page-footnote{font-size:11px;color:var(--text3);line-height:1.6;margin:28px 0 4px;padding-top:14px;border-top:1px solid var(--border2)}
-.page-footnote ul{margin:0;padding-left:16px}
-.page-footnote li{margin:2px 0}
-</style>
-
-<style>
-.seas-table{border-collapse:collapse;background:var(--bg)}
-.seas-table th{padding:8px 16px;text-align:center;font-size:12px;font-weight:800;color:var(--text);background:var(--th-bg);border:1px solid var(--border2);white-space:nowrap}
-.seas-table td{padding:7px 16px;text-align:center;font-size:13px;font-weight:700;color:#111;border:1px solid var(--border);white-space:nowrap}
-.seas-table td.seas-label{text-align:left;font-weight:700;color:var(--text);background:var(--bg);position:sticky;left:0;z-index:1}
-.seas-table th.seas-label-h{text-align:left;position:sticky;left:0;z-index:2;background:var(--th-bg)}
-.seas-section-row td{background:var(--section-bg) !important;color:var(--amber) !important;font-weight:900;text-transform:uppercase;font-size:12px;letter-spacing:.08em;text-align:left;position:sticky;left:0}
-</style>
-<script>
-const SEASONALS_WEEKS = ["Dec 29","Jan 05","Jan 12","Jan 19","Jan 26","Feb 02","Feb 09","Feb 16","Feb 23","Mar 02","Mar 09","Mar 16","Mar 23","Mar 30","Apr 06","Apr 13","Apr 20","Apr 27","May 04","May 11","May 18","May 25","Jun 01","Jun 08","Jun 15","Jun 22","Jun 29","Jul 06","Jul 13","Jul 20","Jul 27","Aug 03","Aug 10","Aug 17","Aug 24","Aug 31","Sep 07","Sep 14","Sep 21","Sep 28","Oct 05","Oct 12","Oct 19","Oct 26","Nov 02","Nov 09","Nov 16","Nov 23","Nov 30","Dec 07","Dec 14","Dec 21","Dec 28"];
-
-const SEASONALS_SECTIONS = [
-  {label:'Grains', products:['Corn','Chicago Wheat','Kansas Wheat','Spring Wheat','Matif Wheat']},
-  {label:'Oilseeds', products:['Soybeans','Soybean Meal','Soybean Oil','Canola Seed','Matif Rapeseed','Palm Oil']},
-  {label:'Meats', products:['Cattle','Hogs','Feeder Cattle']},
-  {label:'Softs', products:['Cotton','Sugar No. 11','White Sugar','Arabica Coffee','Robusta Coffee','NY Cocoa','London Cocoa']},
-];
-
-const SEASONALS_DATA = {
-  'Corn': [4,4,5,2,4,3,4,-5,4,2,-2,-2,1,-1,4,3,1,-1,2,4,1,-1,1,-1,-5,-5,-1,4,-1,-2,-4,-4,-2,-2,-3,-2,-1,-4,-4,-4,5,4,2,-1,-3,-4,-2,-1,0,1,4,2,2],
-  'Chicago Wheat': [-1,0,3,3,4,-4,2,-1,2,1,-2,1,-1,3,2,3,1,3,1,3,1,-3,-5,-5,-5,-5,-3,2,-1,-4,-4,-2,-4,-3,-3,-1,-1,1,4,4,2,1,-2,-1,-2,-4,-3,-2,-2,-2,0,1,-2],
-  'Kansas Wheat': [-2,3,4,4,4,-1,-1,0,1,2,-2,2,2,2,4,4,3,4,-1,0,-3,-2,-4,-4,-3,-3,-1,2,-3,-4,-3,-1,-4,-3,-3,-1,0,0,2,3,2,1,-2,-2,-3,-4,-3,-3,-2,-2,3,2,-1],
-  'Spring Wheat': [-2,1,-1,-1,-3,-2,2,-1,1,0,1,-5,-1,-1,4,2,0,-1,4,1,2,-5,-2,-3,0,-4,1,4,3,-4,0,-4,-4,-1,-4,-4,0,5,5,5,1,-1,-2,-1,-3,-4,-3,-3,-1,-2,0,-1,-2],
-  'Matif Wheat': [-4,0,-1,-1,-1,-3,-3,3,1,-1,1,2,1,-3,4,4,2,-1,1,5,2,-5,-4,-5,-5,-3,2,4,3,-5,4,-4,-4,-4,-4,-4,0,3,5,5,3,1,-2,1,-2,0,-2,-3,-4,-2,3,2,-2],
-  'Soybeans': [1,4,1,1,3,5,4,3,4,-3,-2,-3,0,-1,3,5,0,-2,3,1,-1,2,-1,-3,-4,-3,-5,-4,-4,-5,-5,-4,5,4,0,-2,-5,-5,-4,2,4,5,2,2,-1,-2,-2,2,-1,0,0,0,0],
-  'Soybean Meal': [1,1,1,3,4,4,-2,4,-3,-2,-1,2,-3,4,0,4,0,0,2,1,-3,-1,-3,-4,-3,-1,0,-3,1,-5,-5,-1,-4,-1,-1,-5,-4,-4,-5,-4,3,4,3,3,-3,-3,-3,0,-1,2,2,1,-1],
-  'Soybean Oil': [-2,2,-1,2,3,3,3,3,-3,1,-2,-4,2,-4,1,5,-3,1,-1,4,-4,-2,2,-3,-4,4,-3,-5,-1,-4,4,-3,1,4,-3,-4,-5,-5,-4,0,4,4,2,0,-2,-2,-2,-2,-4,-4,-1,0,2],
-  'Canola Seed': [-2,-2,-1,-2,-1,3,1,5,-3,0,4,4,5,4,5,4,5,5,5,-1,2,-3,-4,-3,3,2,-3,1,-5,-5,-4,1,1,-1,-3,-5,-5,-5,-4,3,4,2,0,2,0,-3,-4,-3,-3,-1,-1,1,-1],
-  'Matif Rapeseed': [0,-5,-4,-4,-1,-3,1,3,-1,-2,1,4,1,1,1,1,1,1,-1,-2,-3,-5,-4,-2,3,-2,-1,-3,1,-1,4,-3,1,-1,-1,-5,-3,-3,1,3,2,4,1,4,1,-3,-5,-3,0,0,0,-1,2],
-  'Palm Oil': [2,-5,-3,1,4,5,4,2,3,-4,-1,-3,2,-2,-1,-4,-1,-3,-3,1,-3,-5,-4,-2,5,-4,1,2,-1,-2,-1,3,4,0,0,-1,-1,-1,-2,-3,2,-2,-1,5,2,-1,-2,2,-2,-2,3,3,3],
-  'Cattle': [1,-1,3,4,2,1,-2,-5,1,4,-1,-1,0,0,-5,0,2,1,1,-4,-4,-3,5,-1,5,1,4,1,-1,5,-1,-4,-4,2,-3,1,4,4,2,-1,-1,0,-1,-2,-3,-4,-1,-4,-2,0,5,4,1],
-  'Hogs': [-1,3,1,4,1,2,-1,4,1,1,3,0,-2,-3,0,2,0,-1,3,-4,3,2,1,4,5,4,-5,-4,-2,-1,2,5,2,2,4,4,4,4,-1,-3,3,-1,-2,-3,-4,-3,1,-2,-3,-3,3,2,-3],
-  'Feeder Cattle': [3,1,1,-2,-1,-1,-4,-1,0,2,4,-3,2,1,-4,1,3,2,4,-5,-4,4,4,4,2,4,3,-1,-4,2,0,2,4,-3,3,-4,4,4,2,4,-1,-2,-5,-5,-3,-5,2,-4,3,1,5,3,3],
-  'Cotton': [1,1,3,1,1,-3,-1,-1,-1,-3,-4,-4,-1,-5,-2,-2,-2,2,1,-4,0,-5,-3,-2,-4,-4,-1,1,-3,3,-2,2,1,1,4,1,5,5,1,1,-2,-2,-3,-3,-2,-2,-1,0,2,2,4,2,4],
-  'Sugar No. 11': [1,2,4,3,3,2,-4,-3,-2,-4,-4,-4,-2,0,1,1,1,2,3,-1,-1,3,2,-3,1,-1,1,-1,-3,-1,3,2,1,1,1,5,0,0,1,-2,-2,-2,-2,-2,0,-1,-4,-5,-5,-5,-3,1,1],
-  'White Sugar': [1,4,3,3,5,3,3,-4,2,-4,-4,-2,-1,-2,1,1,-3,-1,2,1,0,1,1,2,0,-4,-2,1,1,5,-3,-3,-1,-2,1,0,5,-1,5,-1,1,-1,-3,-4,-2,-3,-5,-5,-5,-5,-2,1,2],
-  'Arabica Coffee': [-1,-1,0,4,4,5,5,-1,3,-1,-1,-5,0,1,5,-2,-5,-2,-3,1,1,-3,-1,1,4,-1,-1,-3,-3,1,2,3,5,5,4,5,5,2,-3,-3,-2,-3,-4,-2,3,4,4,1,0,-3,-2,-3,-1],
-  'Robusta Coffee': [4,1,1,4,4,-3,1,3,-1,0,3,-1,-1,-4,-3,1,-1,-3,-1,-1,-1,1,0,2,4,-1,-4,-4,5,-5,-1,2,4,-2,4,-3,4,-3,2,-1,-3,-1,-3,-4,1,1,4,0,1,-2,-3,-3,-1],
-  'NY Cocoa': [2,1,3,-1,-1,-1,4,5,1,-1,-1,4,-2,4,5,5,1,2,-1,-3,1,-5,-3,-3,-5,-1,5,-1,-2,-4,-3,-1,5,-1,-1,2,-2,2,-2,-3,-3,4,-2,-3,3,3,4,0,3,3,0,-3,-3],
-  'London Cocoa': [-3,1,1,-2,-1,4,-3,-1,-1,1,-3,4,2,-2,-3,1,-1,4,2,4,4,-4,-3,-1,0,2,-2,4,-4,1,-3,1,-1,-3,-1,-3,2,-1,-4,1,-3,-5,-3,-3,3,4,4,-2,1,3,0,-3,-4],
-};
-
-function seasonalColor(v){
-  if(v===null||v===undefined) return '#fff';
-  const t = Math.min(Math.abs(v),5)/5;
-  if(v>=0){
-    const r = Math.round(255+(46-255)*t), g = Math.round(255+(143-255)*t), b = Math.round(255+(82-255)*t);
-    return `rgb(${r},${g},${b})`;
-  } else {
-    const r = Math.round(255+(184-255)*t), g = Math.round(255+(56-255)*t), b = Math.round(255+(56-255)*t);
-    return `rgb(${r},${g},${b})`;
-  }
-}
-
-let seasonalsMonth = null;
-
-// Calendar order. The list's first slot ("Dec 29") is the week straddling New Year, so it is shown with January.
-const SEAS_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-function getSeasonalsMonths(){ return SEAS_MONTHS; }
-function seasWeekMonth(i){ return i===0 ? 'Jan' : SEASONALS_WEEKS[i].split(' ')[0]; }
-// Selected month + the next 2, wrapping at year end (Dec -> Jan, Feb). When a window runs Dec -> Jan the New Year
-// week is already covered by the final "Dec 28" slot, so the leading "Dec 29" slot is left out to avoid a duplicate.
-function seasWindow(startMonth){
-  const s = SEAS_MONTHS.indexOf(startMonth);
-  const window = [0,1,2].map(k=>SEAS_MONTHS[(s+k)%12]);
-  const wraps = window.indexOf('Dec')>=0 && window.indexOf('Jan')>=0 && window.indexOf('Dec') < window.indexOf('Jan');
-  const cols = [];
-  window.forEach(m=>{ SEASONALS_WEEKS.forEach((w,i)=>{ if(seasWeekMonth(i)===m && !(wraps && i===0)) cols.push({w,i}); }); });
-  return {window, cols};
-}
-
-function defaultSeasonalsMonth(){
-  const months = getSeasonalsMonths();
-  const nowAbbr = new Date().toLocaleString('en-US',{month:'short'});
-  return months.includes(nowAbbr) ? nowAbbr : months[0];
-}
-
-function buildSeasonalsTable(startMonth){
-  const cols = seasWindow(startMonth).cols;   // rolling quarter: selected month + next 2 (wraps at year end)
-
-  let html = `<table class="seas-table"><thead><tr><th class="seas-label-h">Product</th>`;
-  cols.forEach(o=>{ html += `<th>${o.w}</th>`; });
-  html += `</tr></thead><tbody>`;
-
-  SEASONALS_SECTIONS.forEach(section=>{
-    html += `<tr class="seas-section-row"><td colspan="${cols.length+1}">${section.label}</td></tr>`;
-    section.products.forEach(p=>{
-      const vals = SEASONALS_DATA[p] || [];
-      html += `<tr><td class="seas-label">${p}</td>`;
-      cols.forEach(o=>{
-        const v = vals[o.i];
-        const text = (v===null||v===undefined) ? '—' : (v>0?'+':'')+v;
-        html += `<td style="background:${seasonalColor(v)}">${text}</td>`;
-      });
-      html += `</tr>`;
-    });
-  });
-  html += `</tbody></table>`;
-  return html;
-}
-
-function renderSeasonals(){
-  if(!seasonalsMonth) seasonalsMonth = defaultSeasonalsMonth();
-  const months = getSeasonalsMonths();
-  const root = document.getElementById('seasonals-root');
-  let selHtml = `<div class="toggle" style="margin-bottom:16px;display:inline-flex">`;
-  months.forEach(m=>{
-    selHtml += `<button class="tbtn seas-month-btn${m===seasonalsMonth?' active':''}" data-m="${m}">${m}</button>`;
-  });
-  selHtml += `</div><div style="font-size:12px;color:var(--text3);margin-bottom:10px">Showing ${seasWindow(seasonalsMonth).window[0]} through ${seasWindow(seasonalsMonth).window[2]}</div>`;
-  root.innerHTML = selHtml + buildSeasonalsTable(seasonalsMonth) + `<div class="page-footnote">Forward-looking weekly seasonal score (-5 to +5), 15-year lookback. Static — manually entered, not auto-updating.</div>`;
-  root.querySelectorAll('.seas-month-btn').forEach(b=>{
-    b.addEventListener('click', ()=>{ seasonalsMonth = b.dataset.m; renderSeasonals(); });
-  });
-}
-renderSeasonals();
-</script>
-
-<style>
-.exp-table{width:100%;table-layout:fixed;border-collapse:collapse;border:1px solid var(--border2);background:var(--bg)}
-.exp-table th{background:var(--th-bg);padding:7px 4px;text-align:right;font-size:12.5px;font-weight:900;letter-spacing:.03em;color:var(--text);border-bottom:2px solid var(--border2);white-space:nowrap;overflow:hidden}
-.exp-table th:first-child{text-align:left;width:20%}
-.exp-table td{padding:4px 4px;text-align:right;font-size:13px;font-weight:600;border-bottom:1px solid var(--border);color:var(--text2);white-space:nowrap;background:var(--bg);overflow:hidden;text-overflow:ellipsis}
-.exp-table td:first-child{text-align:left;color:var(--text);font-weight:700}
-.exp-table td.prior{color:var(--text3)}
-.exp-table tr.exp-total td{background:var(--section-bg);color:var(--text);font-weight:900}
-.exp-table tr.exp-latest td{font-weight:800}
-.exp-table tr.exp-latest td:first-child{color:var(--amber)}
-.exp-table tr.exp-click{cursor:pointer}
-.exp-table tr.exp-click:hover td{background:var(--row-alt)}
-.exp-table tr.exp-sel td{background:var(--row-latest)}
-.exp-table tr.exp-sel td:first-child{color:var(--amber);box-shadow:inset 3px 0 0 var(--amber)}
-.exp-hint{margin-left:12px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:none;color:var(--text3)}
-.exp-cap{font-size:12px;color:var(--text3);margin:0 0 8px}
-.exp-row-section td{background:var(--section-bg);color:var(--amber) !important;font-size:13px !important;font-weight:900 !important;letter-spacing:.16em;text-transform:uppercase;padding:8px 10px 6px;border-top:2px solid var(--amber)}
-#exports-err{padding:40px;text-align:center;color:var(--red);font-size:14px}
-</style>
-<script>
-let EXPORTS_DATA = null;
-let exportsCommodity = null;
-let exportsView = 'wow';     // 'country' | 'wow' - opens on Week over Week
-let EXPORTS_HISTORY = null;      // weekly snapshots kept by fetch_exports.py (needed for week-over-week)
-
-function expFmt(v){ return (v===null||v===undefined||isNaN(v)) ? '—' : Math.round(v).toLocaleString(); }
-function expSignedPct(v){
-  if(v===null||v===undefined||isNaN(v)) return '—';
-  const s = v>=0?'+':'';
-  return s+v.toFixed(1)+'%';
-}
-
-function buildExportsSummaryTable(){
-  const cols = [
-    {label:'Net Sales (Wk)'},
-    {label:'Outstanding Sales'},
-    {label:'Accum. Exports (YTD)'},
-    {label:'Total Commitment'},
-    {label:'Accum. Exports YoY'},
-    {label:'Total Commitment YoY'},
-  ];
-  let html = `<table class="exp-table"><thead><tr><th>Commodity</th>`;
-  cols.forEach(c=>{ html += `<th>${c.label}</th>`; });
-  html += `</tr></thead><tbody>`;
-
-  const commodities = EXPORTS_DATA.commodities || {};
-  Object.keys(commodities).forEach(commName=>{
-    const t = commodities[commName].total;
-    if(!t) return;
-    html += `<tr class="exp-click${commName===exportsCommodity?' exp-sel':''}" data-c="${commName.replace(/"/g,'&quot;')}" title="Click for the country detail below"><td>${commName}</td>`;
-    html += `<td class="${t.net_sales>=0?'cftc-up':'cftc-dn'}">${expFmt(t.net_sales)}</td>`;
-    html += `<td>${expFmt(t.outstanding_sales)}</td>`;
-    html += `<td>${expFmt(t.accumulated_exports)}</td>`;
-    html += `<td>${expFmt(t.total_commitment)}</td>`;
-    html += `<td class="${t.yoy_accum_exports_pct>=0?'cftc-up':'cftc-dn'}">${expSignedPct(t.yoy_accum_exports_pct)}</td>`;
-    html += `<td class="${t.yoy_total_commitment_pct>=0?'cftc-up':'cftc-dn'}">${expSignedPct(t.yoy_total_commitment_pct)}</td>`;
-    html += `</tr>`;
-  });
-  html += `</tbody></table>`;
-  return html;
-}
-
-// Week over Week: one row per weekly report for the selected commodity, same columns as the summary table above,
-// so you can see how exports have developed through the marketing year. Rows come from the history kept by
-// fetch_exports.py (rebuilt from earlier saved runs, then one new week at a time).
-function expIso(period){ const d = parseAnyDate(period); return d ? d.toISOString().slice(0,10) : null; }
-
-function buildExportsWowTable(commName){
-  const comm = (EXPORTS_DATA.commodities || {})[commName];
-  if(!comm || !comm.total) return '<div style="color:var(--text3);padding:10px 0">No data</div>';
-
-  // saved weeks + the week currently in export_sales.json (the freshest pull wins for its own week)
-  const rows = {};
-  if(EXPORTS_HISTORY && EXPORTS_HISTORY.weeks){
-    Object.keys(EXPORTS_HISTORY.weeks).forEach(iso=>{ const r = EXPORTS_HISTORY.weeks[iso][commName]; if(r) rows[iso] = r.total ? Object.assign({mkt_year:r.mkt_year}, r.total) : r; });   // .total = earlier file shape
-  }
-  const t = comm.total, curIso = expIso(t.period_ending);
-  if(curIso) rows[curIso] = {mkt_year:t.mkt_year, net_sales:t.net_sales, outstanding_sales:t.outstanding_sales, accumulated_exports:t.accumulated_exports,
-    total_commitment:t.total_commitment, yoy_accum_exports_pct:t.yoy_accum_exports_pct, yoy_total_commitment_pct:t.yoy_total_commitment_pct};
-  const isos = Object.keys(rows).sort().reverse();      // newest first
-
-  const n = isos.length;
-  let cap = `${n} weekly report${n===1?'':'s'} on file for this commodity`;
-  if(n < 4) cap += ' — more weeks appear as each weekly report is collected';
-
-  const cols = ['Net Sales (Wk)','Outstanding Sales','Accum. Exports (YTD)','Total Commitment','Accum. Exports YoY','Total Commitment YoY'];
-  let html = `<div class="exp-cap">${cap}</div><table class="exp-table"><thead><tr><th>Week Ending</th>`;
-  cols.forEach(c=>{ html += `<th>${c}</th>`; });
-  html += `</tr></thead><tbody>`;
-
-  let lastMy = null;
-  isos.forEach((iso, k)=>{
-    const r = rows[iso];
-    if(r.mkt_year && r.mkt_year !== lastMy){            // marketing-year divider (weeks are comparable within one)
-      html += `<tr class="exp-row-section"><td colspan="7">Marketing year ${r.mkt_year}</td></tr>`;
-      lastMy = r.mkt_year;
-    }
-    html += `<tr class="${k===0?'exp-latest':''}"><td>${fmtAsOfDate(parseAnyDate(iso), true)}</td>`;
-    html += `<td class="${r.net_sales>=0?'cftc-up':'cftc-dn'}">${expFmt(r.net_sales)}</td>`;
-    html += `<td>${expFmt(r.outstanding_sales)}</td>`;
-    html += `<td>${expFmt(r.accumulated_exports)}</td>`;
-    html += `<td>${expFmt(r.total_commitment)}</td>`;
-    html += `<td class="${r.yoy_accum_exports_pct>=0?'cftc-up':'cftc-dn'}">${expSignedPct(r.yoy_accum_exports_pct)}</td>`;
-    html += `<td class="${r.yoy_total_commitment_pct>=0?'cftc-up':'cftc-dn'}">${expSignedPct(r.yoy_total_commitment_pct)}</td>`;
-    html += `</tr>`;
-  });
-  html += `</tbody></table>`;
-  return html;
-}
-
-function buildExportsCountryTable(commName){
-  const cols = [
-    {label:'Net Sales (Wk)'},
-    {label:'Outstanding Sales'},
-    {label:'Accum. Exports (YTD)'},
-    {label:'Total Commitment'},
-    {label:'Accum. Exports YoY'},
-    {label:'Total Commitment YoY'},
-  ];
-  let html = `<table class="exp-table"><thead><tr><th>Country</th>`;
-  cols.forEach(c=>{ html += `<th>${c.label}</th>`; });
-  html += `</tr></thead><tbody>`;
-
-  const comm = (EXPORTS_DATA.commodities || {})[commName];
-  const countries = comm ? (comm.countries || {}) : {};
-  const countryNames = Object.keys(countries)
-    .sort((a,b) => (countries[b].accumulated_exports||0) - (countries[a].accumulated_exports||0));
-
-  if(!countryNames.length){
-    html += `<tr><td colspan="${cols.length+1}" style="color:var(--text3)">No country data</td></tr>`;
-  } else {
-    countryNames.forEach(cName=>{
-      const d = countries[cName];
-      html += `<tr><td>${cName}</td>`;
-      html += `<td class="${d.net_sales>=0?'cftc-up':'cftc-dn'}">${expFmt(d.net_sales)}</td>`;
-      html += `<td>${expFmt(d.outstanding_sales)}</td>`;
-      html += `<td>${expFmt(d.accumulated_exports)}</td>`;
-      html += `<td>${expFmt(d.total_commitment)}</td>`;
-      html += `<td class="${d.yoy_accum_exports_pct>=0?'cftc-up':'cftc-dn'}">${expSignedPct(d.yoy_accum_exports_pct)}</td>`;
-      html += `<td class="${d.yoy_total_commitment_pct>=0?'cftc-up':'cftc-dn'}">${expSignedPct(d.yoy_total_commitment_pct)}</td>`;
-      html += `</tr>`;
-    });
-  }
-  html += `</tbody></table>`;
-  return html;
-}
-
-function renderExports(){
-  const root = document.getElementById('exports-root');
-  root.innerHTML = '';
-  { const d = latestExportsDate(); setMetaLines('exports-meta', EXPORTS_DATA._meta?.fetched_at, d ? 'Week ending ' + fmtAsOfDate(d, true) : ''); }
-
-  const commodities = Object.keys(EXPORTS_DATA.commodities || {});
-  if(!exportsCommodity || !commodities.includes(exportsCommodity)){
-    exportsCommodity = commodities[0];
+    body += `<tr class="${r.cls||''}"><td>${name}</td>${cells}${yoy}${pr}${ch}${pc}${pd}</tr>`;
   }
 
-  root.insertAdjacentHTML('beforeend', `<div class="cftc-row-section" style="padding:8px 10px;border-top:2px solid var(--amber);color:var(--amber);font-weight:900;text-transform:uppercase;letter-spacing:.16em;font-size:13px;margin-bottom:0">Commodity Summary — YTD vs Prior Year<span class="exp-hint">click a commodity to see its detail below</span></div>`);
-  root.insertAdjacentHTML('beforeend', buildExportsSummaryTable());
-  root.insertAdjacentHTML('beforeend', `<div id="exports-detail"></div>`);
-  root.insertAdjacentHTML('beforeend', `<div class="page-footnote">Metric tons (cotton: running bales); current marketing year only. Net Sales = new sales this week, net of cancellations · Outstanding = sold, not yet shipped · Accum. Exports = shipped YTD · Total Commitment = Accum. + Outstanding. Week over Week lists each weekly report, newest first.</div>`);
-
-  // click a commodity in the summary to switch the detail below (no re-render of the page, so nothing jumps)
-  root.querySelectorAll('.exp-table tr.exp-click').forEach(tr=>{
-    tr.addEventListener('click', ()=>{ exportsCommodity = tr.dataset.c; renderExportsDetail(); });
-  });
-  renderExportsDetail();
+  root.innerHTML = `
+  ${panel('CANADA · '+g.n+(g.sub?' ('+g.sub+')':''), `crop year Aug–Jul · 1000 MT · history StatsCan · ${label(fc)} f = AAFC ${sdate(S.aafc.date)}`, '',
+      `<div class="tbl-wrap"><table class="bal-table"><thead>${head}</thead><tbody>${body}</tbody></table></div>`)}
+  ${S.checks.notes && S.checks.notes.length ? `<div class="note">Data notes: ${S.checks.notes.join(' · ')}</div>` : ''}
+  <ul class="notes">
+    <li><b>${cols.slice(0,-1).filter(cy=>!estYears.includes(cy)).map(label).join(', ')}:</b> StatsCan final numbers (official, revised).</li>
+    <li><b>${label(fc)} f:</b> AAFC forecast, ${fdate(S.aafc.date)} report.${estYears.length?` <b>e</b> = AAFC estimate until StatsCan finalises that year.`:''}</li>
+    <li><b>Prior / Chg:</b> AAFC's ${label(fc)} forecast in its previous report (${fdate(S.aafc.prior_date)}) and how much it changed.</li>
+    ${PS?`<li><b>@ CGC pace:</b> AAFC's ${label(fc)} sheet with ${PS.what} replaced by the seasonal-pace figures from the CGC Weekly tiles (week ${D.latest_week}), unadjusted. Bold = rows that changed; faded = carried over from AAFC unchanged.${PS.caveat?' '+PS.caveat:''}</li>`:''}
+    <li><b>S/U percentile:</b> rank vs every StatsCan year since 1996-97. Low = tight (red), high = loose (green).</li>
+    <li><b>Colours</b> in past years: green = up / red = down vs the year before.</li>
+    <li><b>Definitions:</b> ${g.k==='canola'?'canola exports = seed only; food &amp; industrial ≈ crush.':g.k==='oats'?'oat exports include oat products (~⅓ of the total), which CGC doesn\'t track.':'wheat excludes durum; exports include flour/products.'} Seed &amp; other = seed + handling loss.</li>
+  </ul>`;
 }
 
-// The lower section: country breakdown or week-over-week for the commodity selected in the summary table.
-function renderExportsDetail(){
-  const box = document.getElementById('exports-detail');
-  if(!box || !EXPORTS_DATA) return;
-  document.querySelectorAll('#exports-root tr.exp-click').forEach(tr=>tr.classList.toggle('exp-sel', tr.dataset.c === exportsCommodity));
-  const title = exportsView === 'wow'
-    ? `Week over Week — ${exportsCommodity}`
-    : `By Country — ${exportsCommodity} — Largest to Smallest`;
-  let html = `<div class="cftc-row-section" style="padding:8px 10px;border-top:2px solid var(--amber);color:var(--amber);font-weight:900;text-transform:uppercase;letter-spacing:.16em;font-size:13px;margin:24px 0 0">${title}</div>`;
-  html += `<div class="toggle" style="display:inline-flex;margin:14px 0"><button class="tbtn exp-view-btn${exportsView==='country'?' active':''}" data-v="country">Country Breakdown</button><button class="tbtn exp-view-btn${exportsView==='wow'?' active':''}" data-v="wow">Week over Week</button></div>`;
-  html += exportsView === 'wow' ? buildExportsWowTable(exportsCommodity) : buildExportsCountryTable(exportsCommodity);
-  box.innerHTML = html;
-  box.querySelectorAll('.exp-view-btn').forEach(b=>b.addEventListener('click', ()=>{ exportsView = b.dataset.v; renderExportsDetail(); }));
-}
-
-// Week-over-week history is optional: without it the toggle still works and says the prior week isn't on file yet.
-fetch('data/export_sales_history.json?_=' + Date.now())
-  .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-  .then(h=>{ EXPORTS_HISTORY = h; renderExportsDetail(); })
-  .catch(()=>{ /* not created yet - fine */ });
-
-fetch('data/export_sales.json?_=' + Date.now())
-  .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-  .then(data=>{
-    EXPORTS_DATA = data;
-    renderExports();
-    exportsReady = true;
-    checkSummaryReady();
-  })
-  .catch(e=>{
-    document.getElementById('exports-root').innerHTML = `<div id="exports-err">Error loading export sales data: ${e.message}</div>`;
-    exportsReady = true; // don't block the Summary tab forever if this one source fails
-    checkSummaryReady();
-  });
-</script>
-
-<style>
-.oil-table{width:100%;border-collapse:collapse;border:1px solid var(--border2);background:var(--bg)}
-.oil-table th{background:var(--th-bg);padding:8px 8px;text-align:right;font-size:14px;font-weight:800;letter-spacing:.05em;color:var(--text2);border-bottom:2px solid var(--border2);white-space:nowrap}
-.oil-table th:first-child{text-align:left;font-size:14px;letter-spacing:.08em}
-.oil-table th.latest{color:var(--amber);font-weight:900;border-bottom:2px solid var(--amber)}
-.oil-table th.yoy{color:var(--text3);font-style:italic}
-.oil-table td{padding:5px 8px;text-align:right;font-size:15px;font-weight:600;border-bottom:1px solid var(--border);color:var(--text2);white-space:nowrap;background:var(--bg)}
-.oil-table td:first-child{text-align:left;color:var(--text);font-weight:700}
-#vegoils-err{padding:40px;text-align:center;color:var(--red);font-size:14px}
-</style>
-<script>
-const VEGOIL_PANELS = [
-  {oil:"Palm Oil",       country:"Indonesia"},
-  {oil:"Palm Oil",       country:"Malaysia"},
-  {oil:"Soybean Oil",    country:"Argentina"},
-  {oil:"Soybean Oil",    country:"Brazil"},
-  {oil:"Soybean Oil",    country:"United States"},
-  {oil:"Rapeseed Oil",   country:"Canada"},
-  {oil:"Rapeseed Oil",   country:"European Union"},
-  {oil:"Sunflower Oil",  country:"Ukraine"},
-  {oil:"Sunflower Oil",  country:"Russia"},
-];
-const VEGOIL_HIST_YEARS = 7;
-
-function commodityGroupAllYears(commList){
-  const years = new Set();
-  commList.forEach(oil=>{
-    const countries = DATA[oil];
-    if(!countries) return;
-    Object.values(countries).forEach(yrs=>Object.keys(yrs).forEach(y=>years.add(y)));
-  });
-  return [...years].sort();
-}
-function vegoilAllYears(){ return commodityGroupAllYears(VEGOILS); }
-
-// Sums a given "entity" (e.g. World, or a country/aggregate) across all 4 oils for one year.
-// entityFn(oil, year) must return the raw {bs,pr,im,dc,ex,es} object (or null/undefined).
-function sumAcrossOils(entityFn, year, commList){
-  const list = commList || VEGOILS;
-  const keys = ['bs','pr','im','dc','ex','es'];
-  const out = {}; let any = false;
-  const pOut = {}; let pAny = false;
-  keys.forEach(k=>{
-    let s = 0, has = false, ps = 0, pHas = false, pMissing = false;
-    list.forEach(oil=>{
-      const yd = entityFn(oil, year);
-      const v = yd ? yd[k] : undefined;
-      if(v !== undefined && !isNaN(v)){
-        s += v; has = true; any = true;
-        const pv = yd._p ? yd._p[k] : undefined;
-        if(pv !== undefined && !isNaN(pv)){ ps += pv; pHas = true; } else { pMissing = true; }
-      }
-    });
-    out[k] = has ? s : undefined;
-    if(has && pHas && !pMissing){ pOut[k] = ps; pAny = true; }
-  });
-  if(!any) return null;
-  if(pAny) out._p = pOut;
-  return out;
-}
-
-function buildOilBalanceTable(yearDataFn, years, includeYoy, allYearsFull){
-  const latestYear = years[years.length-1];
-  const prevYear = years.length>1 ? years[years.length-2] : null;
-  const fullYears = allYearsFull || years;
-  const stuHistory = fullYears.map(y => getStu(yearDataFn(y))).filter(v => v!==null);
-  function stuPctile(y){
-    const v = getStu(yearDataFn(y));
-    if(v===null || stuHistory.length===0) return null;
-    const countLE = stuHistory.filter(x => x<=v).length;
-    return (countLE/stuHistory.length)*100;
+/* AAFC forecast sheet re-run with CGC weekly pace for the rows CGC actually measures */
+function paceSheet(g, C){
+  if (!D || !D.grains[g.k]) return null;
+  const fc = C.forecast_year, Y = C.years;
+  if (fc !== D.current || !Y[fc]) return null;
+  const A = Y[fc];
+  const tile = m => { const P = projection(g.k, m); return P ? P.implied : null; };   // exact "Seasonal pace" figure on the CGC Weekly tiles
+  const v = Object.assign({}, A), changed = new Set();
+  const exp = tile('exp');
+  if (exp == null) return null;
+  v.exp = exp; changed.add('exp');
+  let what = 'exports';
+  if (g.k === 'canola'){              // canola: CGC domestic disappearance ≈ crush ≈ AAFC food & industrial
+    const dom = tile('dom');
+    if (dom != null){ v.fi = dom; v.dom = A.dom - A.fi + dom; changed.add('fi'); changed.add('dom'); what = 'exports and crush (domestic disappearance)'; }
   }
-
-  const ROWS = [
-    {type:'section', label:'Supply'},
-    {type:'row', key:'bs', label:'Beginning stocks'},
-    {type:'row', key:'pr', label:'Production'},
-    {type:'row', key:'im', label:'Imports'},
-    {type:'total', keys:['bs','pr','im'], label:'Total supply'},
-    {type:'section', label:'Use'},
-    {type:'row', key:'dc', label:'Dom. consumption'},
-    {type:'row', key:'ex', label:'Exports'},
-    {type:'total', keys:['dc','ex'], label:'Total demand'},
-    {type:'section', label:'Balance'},
-    {type:'row', key:'es', label:'Ending stocks', cls:'row-ending'},
-    {type:'stu', label:'Stocks / Use %', cls:'row-stu'},
-    {type:'stu_pctile', label:'S/U Percentile Rank (' + fullYears.length + 'yr hist)', cls:'row-pctile'},
-  ];
-
-  function valFromYd(row, yd){
-    if(row.type==='total') return getTotalRaw(yd, row.keys);
-    if(row.type==='stu') return getStu(yd);
-    return getRaw(yd, row.key);
-  }
-  function displayVal(row, y){
-    if(row.type==='stu_pctile') return stuPctile(y);
-    return valFromYd(row, yearDataFn(y));
-  }
-  const latestYd = yearDataFn(latestYear);
-  const priorYd = latestYd && latestYd._p ? latestYd._p : null;
-  function priorCells(row){
-    const blank = '<td class="grp-l prior">—</td><td class="prior">—</td>';
-    if(row.type==='stu_pctile' || !priorYd) return blank;
-    if(row.type==='total' && !row.keys.every(k=>getRaw(priorYd,k)!==null && getRaw(latestYd,k)!==null)) return blank;
-    const pv = valFromYd(row, priorYd), cv = valFromYd(row, latestYd);
-    if(pv===null) return blank;
-    const d = row.type==='stu' ? 1 : 0;
-    const chg = cv!==null ? cv - pv : null;
-    const pText = row.type==='stu' ? fmtStu(pv) : fmt(pv);
-    const cText = chg===null ? '—' : fmtChg(chg, d) + (row.type==='stu' && Number(chg.toFixed(1))!==0 ? 'pp' : '');
-    return `<td class="grp-l prior">${pText}</td><td class="${chgClass(chg, d)}">${cText}</td>`;
-  }
-
-  let html = `<div class="tbl-wrap"><table class="oil-table"><colgroup><col style="width:190px">`;
-  years.forEach(()=>{ html += '<col>'; });
-  if(includeYoy) html += '<col style="width:75px"><col style="width:100px"><col style="width:80px">';
-  html += `</colgroup><thead><tr><th>ITEM</th>`;
-  years.forEach(y=>{ html += `<th class="${y===latestYear?'latest':''}">${y}</th>`; });
-  if(includeYoy) html += `<th class="yoy">YoY Δ</th><th class="yoy grp-l">${priorHeader()}</th><th class="yoy">Chg</th>`;
-  html += `</tr></thead><tbody>`;
-
-  let alt = false;
-  ROWS.forEach(row=>{
-    if(row.type==='section'){
-      html += `<tr class="row-section"><td colspan="${years.length+1+(includeYoy?3:0)}">${row.label}</td></tr>`;
-      alt = false; return;
-    }
-    const cls = [row.cls||'', alt?'row-alt':''].filter(Boolean).join(' ');
-    html += `<tr class="${cls}"><td>${row.label}</td>`;
-    alt = !alt;
-    const vals = years.map(y=>displayVal(row,y));
-    for(let i=0;i<years.length;i++){
-      const v = vals[i], prev = i>0?vals[i-1]:null;
-      let tdCls = years[i]===latestYear ? 'latest' : '';
-      if(row.type!=='stu' && row.type!=='stu_pctile' && v!==null && prev!==null){
-        if(v>prev) tdCls += ' up'; else if(v<prev) tdCls += ' dn';
-      }
-      if(row.type==='stu_pctile' && v!==null){
-        tdCls += v<=25 ? ' pctile-tight' : (v>=75 ? ' pctile-loose' : ' pctile-mid');
-      }
-      const text = row.type==='stu' ? fmtStu(v) : (row.type==='stu_pctile' ? (v===null?'—':ordinal(v)) : fmt(v));
-      html += `<td class="${tdCls.trim()}">${text}</td>`;
-    }
-    if(includeYoy){
-      const cur = displayVal(row, latestYear);
-      const prev = prevYear ? displayVal(row, prevYear) : null;
-      if(row.type==='stu_pctile'){
-        html += `<td class="latest">—</td>`;
-      } else {
-        const yoy = row.type==='stu' ? (cur!==null&&prev!==null?cur-prev:null) : yoyPct(cur,prev);
-        let cls = 'latest';
-        if(yoy!==null){ cls += yoy>0?' up':(yoy<0?' dn':''); }
-        const text = row.type==='stu' ? (yoy===null?'—':(yoy>=0?'+':'')+yoy.toFixed(1)+'pp') : fmtYoy(yoy);
-        html += `<td class="${cls}">${text}</td>`;
-      }
-      html += priorCells(row);
-    }
-    html += '</tr>';
-  });
-  html += '</tbody></table></div>';
-  return html;
-}
-
-function vegoilPanelWrap(title, sub, innerHtml){
-  return `<div class="panel"><div class="panel-hdr"><span class="panel-title">${title}</span><span class="panel-sub">${sub}</span></div>${innerHtml}</div>`;
-}
-
-function renderVegoilsInto(root){
-  const yearsAll = vegoilAllYears();
-  const years7 = yearsAll.slice(-VEGOIL_HIST_YEARS);
-  if(!years7.length){ root.innerHTML = '<div id="vegoils-err">No vegetable oil data available — has the fetcher picked up Oil, Palm / Oil, Soybean / Oil, Rapeseed / Oil, Sunflowerseed yet?</div>'; return; }
-
-  // World — combined across all 4 oils
-  root.insertAdjacentHTML('beforeend', `<div class="sec-hdr">World Balance Sheet — Vegetable Oils (Combined)</div>`);
-  root.insertAdjacentHTML('beforeend', vegoilPanelWrap('WORLD', '1000 MT — Palm + Soybean + Rapeseed + Sunflower',
-    buildOilBalanceTable(y=>sumAcrossOils((oil,yr)=>(DATA[oil]&&DATA[oil]['World'])?DATA[oil]['World'][yr]:undefined, y), years7, true, yearsAll)));
-
-  // Major Exporters — combined
-  root.insertAdjacentHTML('beforeend', `<div class="sec-hdr">Major Exporters — Aggregate (Combined)</div>`);
-  root.insertAdjacentHTML('beforeend', vegoilPanelWrap('MAJOR EXPORTERS', VEGOIL_EXPORTERS.join(', '),
-    buildOilBalanceTable(y=>sumAcrossOils((oil,yr)=>sumCountries(DATA[oil]||{}, VEGOIL_EXPORTERS, yr), y), years7, true, yearsAll)));
-
-  // Major Importers — combined
-  root.insertAdjacentHTML('beforeend', `<div class="sec-hdr">Major Importers — Aggregate (Combined)</div>`);
-  root.insertAdjacentHTML('beforeend', vegoilPanelWrap('MAJOR IMPORTERS', VEGOIL_IMPORTERS.join(', '),
-    buildOilBalanceTable(y=>sumAcrossOils((oil,yr)=>sumCountries(DATA[oil]||{}, VEGOIL_IMPORTERS, yr), y), years7, true, yearsAll)));
-
-  // Individual oil/country panels — single oil each, not combined
-  root.insertAdjacentHTML('beforeend', `<div class="sec-hdr">Individual Exporters — By Oil</div>`);
-  const stack = document.createElement('div');
-  stack.className = 'stack-wrap';
-  VEGOIL_PANELS.forEach(p=>{
-    const countries = DATA[p.oil] || {};
-    const oilYears = (()=>{ const ys=new Set(); Object.values(countries).forEach(yrs=>Object.keys(yrs).forEach(y=>ys.add(y))); return [...ys].sort(); })();
-    const oilYears7 = oilYears.slice(-VEGOIL_HIST_YEARS);
-    if(!oilYears7.length) return;
-    stack.insertAdjacentHTML('beforeend', vegoilPanelWrap(`${p.country.toUpperCase()} — ${p.oil.toUpperCase()}`, '1000 MT',
-      buildOilBalanceTable(y=>(countries[p.country]||{})[y], oilYears7, true, oilYears)));
-  });
-  root.appendChild(stack);
-}
-
-// ---------------- MEAL COMPLEX (Soybean / Rapeseed / Sunflower meal) ----------------
-const MEAL_PANELS = [
-  {oil:"Soybean Meal",    country:"Argentina"},
-  {oil:"Soybean Meal",    country:"Brazil"},
-  {oil:"Soybean Meal",    country:"United States"},
-  {oil:"Rapeseed Meal",   country:"Canada"},
-  {oil:"Rapeseed Meal",   country:"European Union"},
-  {oil:"Sunflower Meal",  country:"Ukraine"},
-  {oil:"Sunflower Meal",  country:"Russia"},
-];
-const MEAL_HIST_YEARS = 7;
-
-function renderMealInto(root){
-  const yearsAll = commodityGroupAllYears(MEALS);
-  const years7 = yearsAll.slice(-MEAL_HIST_YEARS);
-  if(!years7.length){ root.innerHTML = '<div id="vegoils-err">No meal data available — has the fetcher picked up Meal, Soybean / Meal, Rapeseed / Meal, Sunflowerseed yet?</div>'; return; }
-
-  root.insertAdjacentHTML('beforeend', `<div class="sec-hdr">World Balance Sheet — Meal (Combined)</div>`);
-  root.insertAdjacentHTML('beforeend', vegoilPanelWrap('WORLD', '1000 MT — Soybean + Rapeseed + Sunflower meal',
-    buildOilBalanceTable(y=>sumAcrossOils((m,yr)=>(DATA[m]&&DATA[m]['World'])?DATA[m]['World'][yr]:undefined, y, MEALS), years7, true, yearsAll)));
-
-  root.insertAdjacentHTML('beforeend', `<div class="sec-hdr">Major Exporters — Aggregate (Combined)</div>`);
-  root.insertAdjacentHTML('beforeend', vegoilPanelWrap('MAJOR EXPORTERS', MEAL_EXPORTERS.join(', '),
-    buildOilBalanceTable(y=>sumAcrossOils((m,yr)=>sumCountries(DATA[m]||{}, MEAL_EXPORTERS, yr), y, MEALS), years7, true, yearsAll)));
-
-  root.insertAdjacentHTML('beforeend', `<div class="sec-hdr">Major Importers — Aggregate (Combined)</div>`);
-  root.insertAdjacentHTML('beforeend', vegoilPanelWrap('MAJOR IMPORTERS', MEAL_IMPORTERS.join(', '),
-    buildOilBalanceTable(y=>sumAcrossOils((m,yr)=>sumCountries(DATA[m]||{}, MEAL_IMPORTERS, yr), y, MEALS), years7, true, yearsAll)));
-
-  root.insertAdjacentHTML('beforeend', `<div class="sec-hdr">Individual Exporters — By Meal</div>`);
-  const stack = document.createElement('div');
-  stack.className = 'stack-wrap';
-  MEAL_PANELS.forEach(p=>{
-    const countries = DATA[p.oil] || {};
-    const mealYears = commodityGroupAllYears([p.oil]);
-    const mealYears7 = mealYears.slice(-MEAL_HIST_YEARS);
-    if(!mealYears7.length) return;
-    stack.insertAdjacentHTML('beforeend', vegoilPanelWrap(`${p.country.toUpperCase()} — ${p.oil.toUpperCase()}`, '1000 MT',
-      buildOilBalanceTable(y=>(countries[p.country]||{})[y], mealYears7, true, mealYears)));
-  });
-  root.appendChild(stack);
+  v.total_use = v.exp + v.dom; v.end = v.supply - v.total_use; v.su = v.end / v.total_use * 100;
+  ['total_use','end','su'].forEach(k=>changed.add(k));
+  const caveat = g.k==='oats' ? 'Oat exports include products CGC doesn\'t track, so the oat pace column understates exports.' : '';
+  return {v, changed, what, caveat};
 }
 </script>
 </body>
