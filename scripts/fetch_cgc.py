@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Fetch CGC Grain Statistics Weekly (GSW) crop-year CSVs and build data/cgc.json
-for Canola, Wheat (ex-durum) and Oats.
+for Canola and Wheat (ex-durum).
 
 Runs server-side in GitHub Actions (canada.ca blocks browser CORS).
 Needs: pip install curl_cffi openpyxl\nEvery run cross-checks the latest week against the official Excel 'Summary' tab\nand refuses to publish on any mismatch.
@@ -35,8 +35,8 @@ N_HIST = int(os.environ.get("CGC_HIST_YEARS", "5"))   # prior crop years for LY 
 OUT = os.environ.get("CGC_OUT", os.path.join(os.path.dirname(__file__), "..", "data", "cgc.json"))
 LOCAL_DIR = os.environ.get("CGC_LOCAL_DIR")             # optional: read CSVs from disk (testing)
 
-GRAINS = {"Canola": "canola", "Wheat": "wheat", "Oats": "oats"}
-XL_HDR = {"canola": "Canola", "wheat": "Wheat", "oats": "Oat"}   # column headers on the Excel Summary tab
+GRAINS = {"Canola": "canola", "Wheat": "wheat"}
+XL_HDR = {"canola": "Canola", "wheat": "Wheat"}   # column headers on the Excel Summary tab
 PORTS = ["Vancouver", "Prince Rupert", "Churchill", "Thunder Bay", "Bay & Lakes", "St. Lawrence"]
 PROVS = {"Manitoba": "MB", "Saskatchewan": "SK", "Alberta": "AB", "British Columbia": "BC"}
 STOCK_GROUPS = {"Primary Elevators": "primary", "Process Elevators": "process"}  # rest = terminal
