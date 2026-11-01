@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
 Fetch CGC Grain Statistics Weekly (GSW) crop-year CSVs and build data/cgc.json
-for Canola and Wheat (ex-durum).
- 
+for Canola, Wheat (ex-durum) and Oats.
+
 Runs server-side in GitHub Actions (canada.ca blocks browser CORS).
 Needs: pip install curl_cffi openpyxl\nEvery run cross-checks the latest week against the official Excel 'Summary' tab\nand refuses to publish on any mismatch.
- 
+
 Metric definitions (all kt):
   Matches the CGC GSW Excel 'Summary' tab (verified wk 12 2026-27 + year-ago):
   deliveries  = Primary 'Deliveries' + Process 'Producer Deliveries' + Producer Cars 'Shipments'
@@ -26,57 +26,58 @@ import sys
 import time
 from collections import defaultdict
 from datetime import date, datetime, timezone
- 
+
 BASE = "https://www.canada.ca/content/dam/cgc-ccg/documents/statistiques-statistics/grain-statistics-weekly"
 NAME_PATTERNS = ["grain-stats-weekly-{cy}.csv", "grain-statistics-weekly-{cy}.csv"]
 UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36"
- 
+
 N_HIST = int(os.environ.get("CGC_HIST_YEARS", "5"))   # prior crop years for LY / 5-yr avg
 OUT = os.environ.get("CGC_OUT", os.path.join(os.path.dirname(__file__), "..", "data", "cgc.json"))
 LOCAL_DIR = os.environ.get("CGC_LOCAL_DIR")             # optional: read CSVs from disk (testing)
- 
-GRAINS = {"Canola": "canola", "Wheat": "wheat"}
+
+GRAINS = {"Canola": "canola", "Wheat": "wheat", "Oats": "oats"}
+XL_HDR = {"canola": "Canola", "wheat": "Wheat", "oats": "Oat"}   # column headers on the Excel Summary tab
 PORTS = ["Vancouver", "Prince Rupert", "Churchill", "Thunder Bay", "Bay & Lakes", "St. Lawrence"]
 PROVS = {"Manitoba": "MB", "Saskatchewan": "SK", "Alberta": "AB", "British Columbia": "BC"}
 STOCK_GROUPS = {"Primary Elevators": "primary", "Process Elevators": "process"}  # rest = terminal
- 
- 
+
+
 def crop_year_of(d: date) -> str:
     start = d.year if d.month >= 8 else d.year - 1
     return f"{start}-{start + 1}"
- 
- 
+
+
 def prev_cy(cy: str, n: int = 1) -> str:
     s = int(cy[:4]) - n
     return f"{s}-{s + 1}"
- 
- 
+
+
 REFERER = "https://www.canada.ca/en/grain-commission/services/statistics/grain-statistics-weekly.html"
- 
- 
+
+
 def _via_cffi(url):
     """Real Chrome TLS/HTTP2 fingerprint - canada.ca's Akamai edge resets non-browser HTTP/2 clients."""
     from curl_cffi import requests as creq  # pip install curl_cffi
     r = creq.get(url, impersonate="chrome", timeout=90, headers={"Referer": REFERER, "Accept-Language": "en-CA,en;q=0.9"})
     return r.status_code, r.content, ""
- 
- 
+
+
 def _via_curl(url, extra):
     cmd = ["curl", "-sS", "-L", "--connect-timeout", "20", "--max-time", "90", *extra,
            "-w", "\n__HTTP__%{http_code}", url]
     r = subprocess.run(cmd, capture_output=True, timeout=120)
     body, _, code = r.stdout.rpartition(b"\n__HTTP__")
     return int(code or 0), body, r.stderr.decode(errors="replace").strip()[:120]
- 
- 
+
+
 STRATEGIES = [
     ("cffi-chrome", _via_cffi),
     ("curl-http1.1", lambda u: _via_curl(u, ["--http1.1", "-H", "Accept: */*", "-H", "Accept-Language: en-CA,en;q=0.9"])),
     ("curl-plain", lambda u: _via_curl(u, [])),
 ]
 _good = None  # remember the first strategy that works
- 
- 
+
+
 def _get(url):
     global _good
     order = [_good] if _good else STRATEGIES
@@ -92,8 +93,8 @@ def _get(url):
                 _good = (name, fn)
             return code, raw
     return 0, b""
- 
- 
+
+
 def fetch_csv(cy: str):
     if LOCAL_DIR:
         p = os.path.join(LOCAL_DIR, f"{cy}.csv")
@@ -113,23 +114,23 @@ def fetch_csv(cy: str):
             sys.exit("All download methods blocked by canada.ca - see log above")
     print(f"  {cy}: not found", file=sys.stderr, flush=True)
     return None
- 
- 
+
+
 def norm(h: str) -> str:
     return h.strip().strip('"').lower().replace(" ", "_")
- 
- 
+
+
 def num(x) -> float:
     try:
         return float(str(x).replace(",", "").strip())   # older files use "1,063.7"
     except (TypeError, ValueError):
         return 0.0
- 
- 
+
+
 def new_bucket():
     return defaultdict(lambda: defaultdict(float))   # key -> week -> value
- 
- 
+
+
 def parse_year(txt: str):
     """Return (buckets per grain key, week->date map)."""
     rdr = csv.reader(io.StringIO(txt))
@@ -140,7 +141,7 @@ def parse_year(txt: str):
     if missing:
         raise ValueError(f"CSV missing columns {missing}; header={hdr}")
     g = lambda row, k: row[ix[k]].strip() if ix[k] < len(row) else ""
- 
+
     data = {k: new_bucket() for k in GRAINS.values()}
     dates = {}
     for row in rdr:
@@ -162,7 +163,7 @@ def parse_year(txt: str):
         cw = per == "Current Week"
         cyp = per == "Crop Year"
         B = data[key]
- 
+
         if ws == "Primary" and met == "Deliveries":
             if cw:
                 B["del_wk"][wk] += v
@@ -215,15 +216,15 @@ def parse_year(txt: str):
                     if w not in B["stk" + suf]:
                         B["stk" + suf][w] = v
     return data, dates
- 
- 
+
+
 def to_arrays(bucket, nweeks):
     out = {}
     for k, wv in bucket.items():
         out[k] = [round(wv[w], 1) if w in wv else None for w in range(1, nweeks + 1)]
     return out
- 
- 
+
+
 def iso(d: str):
     for fmt in ("%d/%m/%Y", "%Y-%m-%d", "%m/%d/%Y"):
         try:
@@ -231,21 +232,21 @@ def iso(d: str):
         except ValueError:
             pass
     return d
- 
- 
+
+
 # ---------------------------------------------------------------- validation
 CHECK_KEYS = ["del_wk", "del_cy", "dom_wk", "dom_cy", "exp_wk", "exp_cy", "rcpt_wk", "rcpt_cy", "stk"]
 TOL = 0.35   # kt; components are rounded to 0.1 so sums can differ by a few tenths
- 
- 
+
+
 def xlsx_urls(cy, wk):
     b = f"{BASE}/{cy}/"
     ww = f"{wk:02d}"
     if int(cy[:4]) >= 2025:
         return [b + f"{ww}-grain-stats-weekly-{cy}.xlsx", b + f"gsw-shg-{ww}-en.xlsx"]
     return [b + f"gsw-shg-{ww}-en.xlsx", b + f"gsw-shg-{wk}-en.xlsx", b + f"{ww}-grain-stats-weekly-{cy}.xlsx"]
- 
- 
+
+
 def summary_from_xlsx(blob):
     """Read the official GSW workbook 'Summary' tab -> {canola:{...}, wheat:{...}, title}."""
     import openpyxl
@@ -261,11 +262,11 @@ def summary_from_xlsx(blob):
         title = title or next((v for v in vals if "Handling Summary" in v), None)
         if title and hdr is None and "Canola" in vals:
             hdr = i
-            col = {"canola": vals.index("Canola"), "wheat": vals.index("Wheat")}
+            col = {g: vals.index(h) for g, h in XL_HDR.items()}
             break
     if hdr is None:
         raise ValueError("Summary header row not found")
-    res = {"title": title, "canola": {}, "wheat": {}}
+    res = {"title": title, **{g: {} for g in XL_HDR}}
     secs = [("producer deliveries", "del"), ("terminal receipts", "rcpt"), ("exports", "exp"), ("domestic disappearance", "dom")]
     per = {"Current Week": "wk", "To Date": "cy"}
     sec, stocks, scol = None, False, col
@@ -281,7 +282,7 @@ def summary_from_xlsx(blob):
             continue
         if stocks and "Canola" in [t(v) for v in r]:
             vals = [t(v) for v in r]
-            scol = {"canola": vals.index("Canola"), "wheat": vals.index("Wheat")}
+            scol = {g: vals.index(h) for g, h in XL_HDR.items()}
         if a in ("Current Week", "Week Ago", "To Date", "Year Ago"):
             if sec and a in per:
                 for g, c in col.items():
@@ -295,8 +296,8 @@ def summary_from_xlsx(blob):
                 res[g]["stk"] = float(v) if isinstance(v, (int, float)) else 0.0
             stocks = False
     return res
- 
- 
+
+
 def validate(out):
     errs, notes = [], []
     cur, lw = out["current"], out["latest_week"]
@@ -352,8 +353,8 @@ def validate(out):
                            "source": url_used, "at": out["updated"]}
         print(f"  Excel cross-check: {cells} cells, max diff {maxd:.2f} kt")
     return errs
- 
- 
+
+
 def main():
     today = date.today()
     cur = crop_year_of(today)
@@ -370,7 +371,7 @@ def main():
     avail = [cy for cy in years if cy in raw]
     current = avail[0]
     keep = avail[: N_HIST + 1]
- 
+
     out = {
         "updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "source": "Canadian Grain Commission - Grain Statistics Weekly",
@@ -390,11 +391,11 @@ def main():
             out["grains"][gk][cy] = to_arrays(bucket, nweeks)
         out["dates"][cy] = [iso(dates.get(w, "")) for w in range(1, nweeks + 1)]
         print(f"  parsed {cy}: {nweeks} weeks")
- 
+
     lw = len(out["dates"][current])
     out["latest_week"] = lw
     out["latest_date"] = out["dates"][current][-1] if lw else None
- 
+
     if not LOCAL_DIR:
         errs = validate(out)
         if errs:
@@ -402,13 +403,12 @@ def main():
             for e in errs:
                 print("  - " + e, file=sys.stderr)
             sys.exit(1)
- 
+
     os.makedirs(os.path.dirname(os.path.abspath(OUT)), exist_ok=True)
     with open(OUT, "w") as f:
         json.dump(out, f, separators=(",", ":"))
     print(f"Wrote {OUT}: {current} wk {lw} ({out['latest_date']}), {os.path.getsize(OUT)/1e3:.0f} KB")
- 
- 
+
+
 if __name__ == "__main__":
     main()
- 
