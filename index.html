@@ -4,7 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CGC Terminal · Canola & Wheat</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{height:100%}
@@ -71,11 +70,11 @@ td.up,span.up{color:var(--green) !important}
 td.dn,span.dn{color:var(--red) !important}
 td.dim{color:var(--text3) !important;font-weight:500 !important}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:20px}
-.kpi{background:var(--bg1);border:1px solid var(--border2);border-top:3px solid var(--border2);padding:11px 14px;cursor:pointer}
+.kpi{background:var(--bg1);border:1px solid var(--border2);border-top:3px solid var(--amber);padding:11px 14px}
 .kpi.on{border-top-color:var(--amber);background:var(--row-latest)}
 .kpi:hover:not(.on){border-top-color:var(--text3)}
 .kpi .t{color:var(--text3);font-size:12px;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
-.kpi .v{font-size:27px;font-weight:900;color:var(--text);margin:5px 0 4px}
+.kpi .v{font-size:27px;font-weight:900;color:var(--amber);margin:5px 0 4px}
 .kpi.on .v{color:var(--amber)}
 .kpi .v small{font-size:13px;color:var(--text3);font-weight:600}
 .kpi .r{display:flex;justify-content:space-between;font-size:13px;color:var(--text2);margin-top:2px}
@@ -199,7 +198,6 @@ Promise.all([
 ]).then(([c,s])=>{ D=c; S=s; render(); });
 
 function render(){
-  charts.forEach(c=>c.destroy()); charts=[];
   renderGrainToggle();
   const g = GRAINS.find(x=>x.k===state.tab);
   document.getElementById('banner').innerHTML='';
@@ -225,7 +223,7 @@ function renderCGC(g){
     const mode = x.flow?'cy':null;
     const cur=val(g.k,D.current,x.k,w,mode), l=val(g.k,ly(),x.k,w,mode), a=avg5(g.k,x.k,w,mode);
     const wk = x.flow ? val(g.k,D.current,x.k,w,'wk') : null, wkl = x.flow ? val(g.k,ly(),x.k,w,'wk') : null;
-    return `<div class="kpi ${state.metric===x.k?'on':''}" data-m="${x.k}">
+    return `<div class="kpi">
       <div class="t">${x.n} · ${x.flow?'CYTD':'LEVEL'}</div>
       <div class="v">${fmt(cur)} <small>kt</small></div>
       <div class="r"><span>vs LY ${pctHtml(pct(cur,l))}</span><span>vs avg ${pctHtml(pct(cur,a))}</span></div>
@@ -237,50 +235,7 @@ function renderCGC(g){
   root.innerHTML = `
   <div class="kpis">${kpis}</div>
   ${panel('LAST 10 WEEKS', g.n+(g.sub?' · '+g.sub:'')+' · 1000 MT', '', `<div class="tbl-wrap">${recentTable(g)}</div>`)}
-  <div class="grid2">
-    ${panel(m.n, (m.flow?'CYTD':'level')+' · 1000 MT'+(m.proj?' · dotted = seasonal pace':''),
-      `<div class="toggle"><button class="tbtn sm ${state.zoom?'active':''}" id="zb">Zoom</button><button class="tbtn sm ${state.zoom?'':'active'}" id="fb">Full yr</button></div>`,
-      `<div class="panel-body"><div class="chart"><canvas id="c1"></canvas></div></div>`)}
-    ${panel(m.flow?m.n+' · WEEKLY':'STOCKS BY LOCATION', '1000 MT', '', `<div class="panel-body"><div class="chart"><canvas id="c2"></canvas></div></div>`)}
-  </div>
-  <div class="grid2">
-    ${panel('EXPORTS BY PORT', 'terminal · 1000 MT', '', `<div class="tbl-wrap">${portTable(g.k)}</div>`)}
-    ${panel('DELIVERIES BY PROVINCE', 'primary elevators · CYTD · 1000 MT', '', `<div class="tbl-wrap">${provTable(g.k)}</div>`)}
-  </div>
   ${cgcNotes()}`;
-
-  root.querySelectorAll('.kpi').forEach(el=>el.onclick=()=>{state.metric=el.dataset.m; render();});
-  document.getElementById('zb').onclick=()=>{state.zoom=true; render();};
-  document.getElementById('fb').onclick=()=>{state.zoom=false; render();};
-
-  const wks = maxWeeks(), H = hist(), key = m.flow ? m.k+'_cy' : 'stk', band = bandSeries(g.k, key);
-  const P = m.proj ? projection(g.k, m.k) : null;
-  charts.push(lineChart('c1', wks, [
-    ds(label(D.current), series(g.k,D.current,key), css('--amber'), null, 3),
-    ...(P ? [ds(`${label(D.current)} seasonal pace → ${fmt(P.implied,0)}`, P.line, css('--amber'), [5,4], 2)] : []),
-    ds(label(ly()), series(g.k,ly(),key), css('--ref-color')),
-    ds(H.length+'-yr avg', avgSeries(g.k,m.k, m.flow?'cy':null), css('--text3'), [4,3]),
-    {label:'range max', data:band.max, borderWidth:0, pointRadius:0, fill:'+1', backgroundColor:css('--band')},
-    {label:'range min', data:band.min, borderWidth:0, pointRadius:0, fill:false},
-  ]));
-  if (state.zoom){ const c=charts[charts.length-1]; c.options.scales.x.max=Math.min(wks.length-1, D.latest_week+7); c.update(); }
-
-  if (m.flow){
-    charts.push(new Chart(document.getElementById('c2'), {
-      data:{labels:wks, datasets:[
-        {type:'bar', label:label(D.current), data:series(g.k,D.current,m.k+'_wk')||[], backgroundColor:css('--amber')},
-        {type:'bar', label:label(ly()), data:series(g.k,ly(),m.k+'_wk'), backgroundColor:css('--ref-color')+'99'},
-        {type:'line', label:H.length+'-yr avg', data:avgSeries(g.k,m.k,'wk'), borderColor:css('--text3'), borderDash:[4,3], pointRadius:0, borderWidth:1.5},
-      ]}, options:chartOpts()}));
-  } else {
-    const n = D.dates[D.current].length;
-    charts.push(new Chart(document.getElementById('c2'), {type:'bar',
-      data:{labels:wks.slice(0,n), datasets:[
-        {label:'Primary', data:series(g.k,D.current,'stk_primary'), backgroundColor:css('--amber')},
-        {label:'Process', data:series(g.k,D.current,'stk_process'), backgroundColor:css('--green')},
-        {label:'Terminal', data:series(g.k,D.current,'stk_terminal'), backgroundColor:css('--ref-color')},
-      ]}, options:chartOpts(true)}));
-  }
 }
 function projRow(g,m){
   const P = projection(g,m); if (!P) return '';
@@ -331,8 +286,8 @@ function cgcNotes(){
   Figures match the GSW Excel Summary tab. Deliveries = primary + process elevator producer deliveries + producer cars.
   Domestic disappearance = process elevator use (canola crush / wheat milled) + terminal and primary shipments to Canadian domestic + producer cars to Canadian processors.
   Exports = terminal exports + direct exports from primary elevators + producer cars to US. Stocks = commercial stocks at primary, process and terminal elevators (excl. condo storage).
-  Seasonal pace (dotted line) = current CYTD ÷ average share of the full-year total completed by this week in the prior crop years, traced forward along the average seasonal curve; range = same calc using each prior year alone. Arithmetic pace, not a forecast.
-  Wheat excludes durum. History uses CGC's revised crop-year files; CGC publishes no report for some Christmas weeks (wk 21 in several years) — weekly bars show the gap, cumulative and stock lines interpolate across it.</div>`;
+  Seasonal pace = current CYTD ÷ average share of the full-year total completed by this week in the prior crop years; range = same calc using each prior year alone. Arithmetic pace, not a forecast.
+  Wheat excludes durum. History uses CGC's revised crop-year files; CGC publishes no report for some Christmas weeks (wk 21 in several years) — averages interpolate across it.</div>`;
 }
 
 /* =========================================================== chart helpers */
