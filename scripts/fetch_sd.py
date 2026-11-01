@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """
-Canadian supply & disposition (balance sheets) for Canola and Wheat (ex-durum) -> data/sd.json
- 
+Canadian supply & disposition (balance sheets) for Canola, Wheat (ex-durum) and Oats -> data/sd.json
+
 Sources (no API keys - plain public downloads):
   * Statistics Canada 32-10-0013  Supply and disposition of grains in Canada (actuals, 1996-97 on)
   * Statistics Canada 32-10-0359  Area, yield and production (harvested acres, bu/ac)
   * AAFC "Canada: Outlook for Principal Field Crops" (monthly forecast; latest + prior report)
- 
+
 Rules:
   * Completed crop years come from StatsCan (authoritative, revised).
   * Years StatsCan hasn't finalised come from the latest AAFC report.
   * Every balance sheet must add up (supply = beg + prod + imports; supply = exports + domestic + ending)
     or nothing is published.
- 
+
 Needs: pip install curl_cffi   (falls back to system curl via fetch_cgc._get)
 """
 import csv
@@ -24,27 +24,28 @@ import sys
 import zipfile
 from datetime import datetime, timezone
 from html.parser import HTMLParser
- 
+
 sys.path.insert(0, os.path.dirname(__file__))
 from fetch_cgc import _get  # noqa: E402  (same browser-like downloader as the CGC script)
- 
+
 OUT = os.environ.get("SD_OUT", os.path.join(os.path.dirname(__file__), "..", "data", "sd.json"))
 ARCHIVE = os.path.join(os.path.dirname(OUT), "aafc")
 LOCAL_DIR = os.environ.get("SD_LOCAL_DIR")  # testing: read sources from disk
- 
+
 SC_SD = "https://www150.statcan.gc.ca/n1/tbl/csv/32100013-eng.zip"
 SC_AYP = "https://www150.statcan.gc.ca/n1/tbl/csv/32100359-eng.zip"
 AAFC_BASE = "https://agriculture.canada.ca"
 AAFC_LIST = AAFC_BASE + "/en/sector/crops/reports-statistics"
- 
+
 CROPS = {
     "canola": {"sd": "Canola", "ayp": "Canola (rapeseed)", "aafc": r"^canola", "lb_bu": 50.0},
     "wheat": {"sd": "Wheat, excluding durum", "ayp": "Wheat, all excluding durum wheat", "aafc": r"^wheat except durum", "lb_bu": 60.0},
+    "oats": {"sd": "Oats", "ayp": "Oats", "aafc": r"^oats", "lb_bu": 34.0},
 }
 HA_TO_AC = 2.471053814
 TOL = 3.0  # kt - published tables are rounded to whole kt
- 
- 
+
+
 def fetch(url, name):
     if LOCAL_DIR:
         with open(os.path.join(LOCAL_DIR, name), "rb") as f:
@@ -53,12 +54,12 @@ def fetch(url, name):
     if code != 200:
         raise RuntimeError(f"download failed ({code}): {url}")
     return raw
- 
- 
+
+
 def cy_label(start):
     return f"{start}-{start + 1}"
- 
- 
+
+
 # ------------------------------------------------------------------ StatsCan
 def statcan_rows(blob, want_crops, crop_col_name):
     z = zipfile.ZipFile(io.BytesIO(blob))
@@ -72,8 +73,8 @@ def statcan_rows(blob, want_crops, crop_col_name):
             if len(r) < len(hdr) or r[ix["GEO"]] != "Canada" or r[ci] not in want_crops:
                 continue
             yield r, ix
- 
- 
+
+
 def parse_statcan_sd(blob):
     want = {c["sd"]: k for k, c in CROPS.items()}
     out = {k: {} for k in CROPS}
@@ -100,8 +101,8 @@ def parse_statcan_sd(blob):
                 "seed_other": dom - fi - fwd, "dom": dom, "end": g("Total ending stocks"), "src": "StatsCan",
             }
     return res
- 
- 
+
+
 def parse_statcan_ayp(blob):
     want = {c["ayp"]: k for k, c in CROPS.items()}
     keep = {"Harvested area (acres)": "ac_harv", "Seeded area (acres)": "ac_seed",
@@ -116,15 +117,15 @@ def parse_statcan_ayp(blob):
         d = out[want[r[ix["Type of crop"]]]].setdefault(cy_label(year), {})
         d[m] = float(v) / 1000.0 if m.startswith("ac_") else float(v)
     return out
- 
- 
+
+
 # ------------------------------------------------------------------ AAFC
 class TableParser(HTMLParser):
     """Collect every <table>: caption text + rows of cell text."""
     def __init__(self):
         super().__init__()
         self.tables, self._t, self._row, self._cell, self._cap, self._in_cap, self._skip = [], None, None, None, None, False, 0
- 
+
     def handle_starttag(self, tag, attrs):
         if tag == "table":
             self._t = {"caption": "", "rows": [], "foot": False}
@@ -142,7 +143,7 @@ class TableParser(HTMLParser):
             self._skip += 1                  # footnote markers
         elif tag == "span" and ("class", "wb-inv") in attrs:
             self._skip += 1
- 
+
     def handle_endtag(self, tag):
         if self._t is None:
             return
@@ -160,7 +161,7 @@ class TableParser(HTMLParser):
             self._row = None
         elif tag in ("sup", "span") and self._skip:
             self._skip -= 1
- 
+
     def handle_data(self, data):
         if self._t is None or self._skip:
             return
@@ -168,21 +169,21 @@ class TableParser(HTMLParser):
             self._t["caption"] += data
         elif self._cell is not None:
             self._cell += data
- 
- 
+
+
 AAFC_ROWS = [
     (r"^area seeded", "ha_seed"), (r"^area harvested", "ha_harv"), (r"^yield", "t_ha"),
     (r"^production", "prod"), (r"^imports", "imp"), (r"^total supply", "supply"), (r"^exports", "exp"),
     (r"^food and industrial", "fi"), (r"^feed, waste", "fwd"), (r"^total domestic use", "dom"),
     (r"^carry-out stocks", "end"), (r"^average price", "price"),
 ]
- 
- 
+
+
 def num(s):
-    s = s.replace(",", "").replace(" ", "").strip()
+    s = s.replace(",", "").replace(" ", "").strip()
     return float(s) if re.fullmatch(r"-?\d+(\.\d+)?", s) else None
- 
- 
+
+
 def parse_aafc(html):
     p = TableParser()
     p.feed(html)
@@ -214,8 +215,8 @@ def parse_aafc(html):
         res[key] = cols
     m = re.search(r"Outlook for Principal Field Crops,?\s*(\d{4}-\d{2}-\d{2})", html)
     return res, (m.group(1) if m else None)
- 
- 
+
+
 def aafc_report_urls():
     html = fetch(AAFC_LIST, "aafc_list.html").decode("utf-8", "replace")
     links = re.findall(r'href="([^"]*canada-outlook-principal-field-crops-(\d{4}-\d{2}-\d{2}))"', html)
@@ -227,8 +228,8 @@ def aafc_report_urls():
     if not out:
         raise RuntimeError("no AAFC outlook links on the reports page")
     return out
- 
- 
+
+
 # ------------------------------------------------------------------ build + validate
 def check_sheet(tag, d, errs):
     if abs(d["beg"] + d["prod"] + d["imp"] - d["supply"]) > TOL:
@@ -238,8 +239,8 @@ def check_sheet(tag, d, errs):
     for k in ("prod", "supply", "exp", "dom", "end"):
         if d[k] is None or d[k] < 0:
             errs.append(f"{tag}: bad {k}={d[k]}")
- 
- 
+
+
 def main():
     errs, warns = [], []
     sd = parse_statcan_sd(fetch(SC_SD, "32100013-eng.zip"))
@@ -255,11 +256,11 @@ def main():
         except Exception as e:  # noqa: BLE001
             warns.append(f"prior AAFC report unreadable: {e}")
     print(f"  StatsCan S&D years: canola {min(sd['canola'])}..{max(sd['canola'])}; AAFC latest {latest_date}, prior {prior_date}")
- 
+
     out = {"updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
            "aafc": {"date": latest_date, "url": latest_url, "prior_date": prior_date},
            "statcan_latest": max(sd["canola"]), "crops": {}}
- 
+
     for key, c in CROPS.items():
         years = {}
         for cy, d in sd[key].items():
@@ -303,7 +304,7 @@ def main():
             warns.append(f"{key}: prior AAFC report has no {fc} column")
         out["crops"][key] = {"years": dict(sorted(years.items())), "forecast_year": fc,
                              "aafc_years": aafc_years, "prior": prior_fc}
- 
+
     # don't go backwards
     try:
         prev = json.load(open(OUT))
@@ -311,7 +312,7 @@ def main():
             errs.append(f"AAFC report went backwards: {prev['aafc']['date']} -> {latest_date}")
     except (FileNotFoundError, ValueError):
         pass
- 
+
     for w in warns:
         print("  note: " + w)
     if errs:
@@ -319,7 +320,7 @@ def main():
         for e in errs:
             print("  - " + e, file=sys.stderr)
         sys.exit(1)
- 
+
     os.makedirs(ARCHIVE, exist_ok=True)
     with open(os.path.join(ARCHIVE, f"{latest_date}.json"), "w") as f:   # month-by-month history builds up
         json.dump(latest, f, separators=(",", ":"))
@@ -327,8 +328,7 @@ def main():
     with open(OUT, "w") as f:
         json.dump(out, f, separators=(",", ":"))
     print(f"Wrote {OUT}: AAFC {latest_date}, {out['checks']['sheets']} balance sheets verified")
- 
- 
+
+
 if __name__ == "__main__":
     main()
- 
