@@ -21,6 +21,7 @@ import csv
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -298,6 +299,140 @@ def summary_from_xlsx(blob):
     return res
 
 
+MONTHS = {name: i for i, name in enumerate(
+    ["january", "february", "march", "april", "may", "june",
+     "july", "august", "september", "october", "november", "december"], 1)}
+SUMMARY_KEYS = ["del_wk", "del_cy", "dom_wk", "dom_cy", "exp_wk", "exp_cy", "rcpt_wk", "rcpt_cy", "stk"]
+
+
+def repeated_week_numbers(out):
+    """Weeks whose CSV rows are a copy of the previous week (same ending date and values)."""
+    found = []
+    for cy, dates in out["dates"].items():
+        for i in range(1, len(dates)):
+            if not dates[i] or dates[i] != dates[i - 1]:
+                continue
+            identical = True
+            for g in GRAINS.values():
+                for arr in out["grains"][g].get(cy, {}).values():
+                    if isinstance(arr, list) and i < len(arr) and arr[i] != arr[i - 1]:
+                        identical = False
+                        break
+                if not identical:
+                    break
+            if identical:
+                found.append((cy, i + 1))
+    return found
+
+
+def ending_from_title(title):
+    m = re.search(r"(?:ending|to)\s+(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})", title or "", re.I)
+    if not m:
+        return None
+    month = MONTHS.get(m.group(2).lower())
+    if not month:
+        return None
+    try:
+        return date(int(m.group(3)), month, int(m.group(1))).isoformat()
+    except ValueError:
+        return None
+
+
+def crush_from_xlsx(blob):
+    """First Process-sheet 'Milled/Mfg Grain' block for Wheat and Canola.
+
+    The workbook leads with the Western Division current week, then its crop-year
+    block. Later regional blocks are ignored. Returns {} when the sheet is absent.
+    """
+    import openpyxl
+    wb = openpyxl.load_workbook(io.BytesIO(blob), read_only=True, data_only=True)
+    name = next((n for n in wb.sheetnames if n.strip().lower() == "process"), None)
+    if not name:
+        return {}
+    t = lambda v: " ".join(str(v).split()) if v not in (None, "") else ""
+    col, section = None, "wk"
+    out = {"canola": {}, "wheat": {}}
+    names = {"Canola": "canola", "Wheat": "wheat"}
+    for r in wb[name].iter_rows(values_only=True):
+        a = t(r[0]) if r else ""
+        if "crop year to date" in a.lower():
+            section, col = "cy", None
+            continue
+        cells = [t(c) for c in r]
+        if any("milled" in c.lower() for c in cells):
+            col = next(i for i, c in enumerate(cells) if "milled" in c.lower())
+            continue
+        g = names.get(a)
+        if col is None or not g or section in out[g]:
+            continue
+        v = r[col] if col < len(r) else None
+        if isinstance(v, (int, float)):
+            out[g][section] = round(float(v), 1)
+    return out
+
+
+def _blank_week(out, cy, wk):
+    i = wk - 1
+    for g in GRAINS.values():
+        for arr in out["grains"][g].get(cy, {}).values():
+            if isinstance(arr, list) and i < len(arr):
+                arr[i] = None
+    if i < len(out["dates"][cy]):
+        out["dates"][cy][i] = ""
+
+
+def repair_repeated_weeks(out):
+    """Replace a CSV week that repeats the prior week with that week's official Excel.
+
+    Copied figures are cleared first. Only Summary headline series and Process crush
+    are copied across, and only when the workbook title names the same grain week.
+    Anything the workbook does not report stays null.
+    """
+    notes = []
+    for cy, wk in repeated_week_numbers(out):
+        _blank_week(out, cy, wk)
+        blob, url = None, None
+        for u in xlsx_urls(cy, wk):
+            code, raw = _get(u)
+            if code == 200 and raw[:2] == b"PK":
+                blob, url = raw, u
+                break
+        note = {"crop_year": cy, "week": wk, "week_ending": None, "source": url, "filled": False}
+        if blob is None:
+            notes.append(note)
+            print(f"  week {wk}: CSV repeats the previous week and no Excel was found", flush=True)
+            continue
+        summary = summary_from_xlsx(blob)
+        title = summary.get("title") or ""
+        if not re.search(rf"Week\s+{wk}\b", title, re.I):
+            notes.append(note)
+            print(f"  week {wk}: Excel title did not name Week {wk}: {title}", flush=True)
+            continue
+        ending = ending_from_title(title)
+        note["week_ending"] = ending
+        if ending:
+            out["dates"][cy][wk - 1] = ending
+        crush = crush_from_xlsx(blob)
+        for g in GRAINS.values():
+            series = out["grains"][g][cy]
+            block = summary.get(g) or {}
+            for k in SUMMARY_KEYS:
+                v = block.get(k)
+                if k in series and isinstance(v, (int, float)):
+                    series[k][wk - 1] = round(float(v), 1)
+            c = crush.get(g) or {}
+            if "wk" in c and "crush_wk" in series:
+                series["crush_wk"][wk - 1] = c["wk"]
+            if "cy" in c and "crush_cy" in series:
+                series["crush_cy"][wk - 1] = c["cy"]
+        note["filled"] = True
+        notes.append(note)
+        print(f"  week {wk}: replaced repeated CSV week from Excel ({ending})", flush=True)
+    if notes:
+        out["quality"] = notes
+    return notes
+
+
 def validate(out):
     errs, notes = [], []
     cur, lw = out["current"], out["latest_week"]
@@ -349,6 +484,15 @@ def validate(out):
                 maxd = max(maxd, d)
                 if d > TOL:
                     errs.append(f"MISMATCH {g} {k} wk{lw}: Excel {a} vs terminal {b}")
+        crush = crush_from_xlsx(raw)
+        for g in GRAINS.values():
+            for suf, key in (("wk", "crush_wk"), ("cy", "crush_cy")):
+                a = (crush.get(g) or {}).get(suf)
+                b = (out["grains"][g][cur].get(key) or [None] * lw)[lw - 1]
+                if a is None or b is None or abs(a - b) > TOL:
+                    errs.append(f"Excel Process crush mismatch {g} {key}: Excel {a} vs terminal {b}")
+                else:
+                    cells += 1
         out["verified"] = {"week": lw, "crop_year": cur, "cells": cells, "max_diff": round(maxd, 2),
                            "source": url_used, "at": out["updated"]}
         print(f"  Excel cross-check: {cells} cells, max diff {maxd:.2f} kt")
@@ -397,6 +541,7 @@ def main():
     out["latest_date"] = out["dates"][current][-1] if lw else None
 
     if not LOCAL_DIR:
+        repair_repeated_weeks(out)
         errs = validate(out)
         if errs:
             print("\nVALIDATION FAILED - not publishing:", file=sys.stderr)
