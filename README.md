@@ -1,6 +1,6 @@
 CGC Terminal — build notes (updated 2026-10-31)
 
-Repo: github.com/Summers10/CGC · Site: https://summers10.github.io/CGC/ Static GitHub Pages site + GitHub Actions cron (Thu 22:30 UTC, Fri 14:30 UTC) → scripts/fetch_cgc.py → data/cgc.json → index.html (Chart.js). Scope: Canola and Wheat (ex-durum) tabs only. No Summary/Durum/All Wheat tabs (user's request).
+Repo: github.com/Summers10/CGC-TERMINAL · Site: https://summers10.github.io/CGC-TERMINAL/ Static GitHub Pages site + GitHub Actions cron (Thu 22:30 UTC, Fri 14:30 UTC) → scripts/fetch_cgc.py → data/cgc.json → index.html. The page loads the JSON in the browser; a plain fetch of the HTML stays on “Loading…”. Missing figures are shown as “not available”. Scope: Canola, Wheat (ex-durum) and Oats on the balance sheet; CGC weekly covers canola and wheat only.
 
 Fetching (important)
 canada.ca (Akamai) resets plain curl/python HTTP/2 requests from GitHub runners (curl err 92 INTERNAL_ERROR).
